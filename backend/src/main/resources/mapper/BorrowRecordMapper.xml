@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.book.mapper.BorrowRecordMapper">
+
+    <resultMap id="BorrowRecordResultMap" type="com.example.book.entity.BorrowRecord">
+        <id property="id" column="id"/>
+        <result property="bookId" column="book_id"/>
+        <result property="bookTitle" column="book_title"/>
+        <result property="borrower" column="borrower"/>
+        <result property="borrowTime" column="borrow_time"/>
+        <result property="dueTime" column="due_time"/>
+        <result property="returnTime" column="return_time"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO borrow_record (book_id, book_title, borrower, borrow_time, due_time, status)
+        VALUES (#{bookId}, #{bookTitle}, #{borrower}, #{borrowTime}, #{dueTime}, #{status})
+    </insert>
+
+    <select id="findById" resultMap="BorrowRecordResultMap">
+        SELECT * FROM borrow_record WHERE id = #{id}
+    </select>
+
+    <select id="findAll" resultMap="BorrowRecordResultMap">
+        SELECT * FROM borrow_record
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <select id="findByBorrower" resultMap="BorrowRecordResultMap">
+        SELECT * FROM borrow_record
+        WHERE borrower = #{borrower}
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY id DESC
+    </select>
+
+    <update id="updateReturnStatus">
+        UPDATE borrow_record
+        SET status = 'RETURNED',
+            return_time = #{returnTime}
+        WHERE id = #{id}
+          AND status = 'BORROWED'
+    </update>
+
+    <select id="findActiveByBookAndBorrower" resultMap="BorrowRecordResultMap">
+        SELECT * FROM borrow_record
+        WHERE book_id = #{bookId}
+          AND borrower = #{borrower}
+          AND status = 'BORROWED'
+        LIMIT 1
+    </select>
+
+</mapper>

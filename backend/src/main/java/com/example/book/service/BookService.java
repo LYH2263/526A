@@ -47,8 +47,23 @@ public class BookService {
 
     public void save(Book book) {
         if (book.getId() == null) {
+            if (book.getTotalStock() == null) {
+                book.setTotalStock(0);
+            }
+            if (book.getAvailableStock() == null) {
+                book.setAvailableStock(book.getTotalStock());
+            }
             bookMapper.insert(book);
         } else {
+            Book existing = bookMapper.findById(book.getId());
+            if (existing != null && book.getTotalStock() != null) {
+                int diff = book.getTotalStock() - (existing.getTotalStock() != null ? existing.getTotalStock() : 0);
+                int newAvailable = (existing.getAvailableStock() != null ? existing.getAvailableStock() : 0) + diff;
+                if (newAvailable < 0) {
+                    newAvailable = 0;
+                }
+                book.setAvailableStock(newAvailable);
+            }
             bookMapper.update(book);
         }
     }

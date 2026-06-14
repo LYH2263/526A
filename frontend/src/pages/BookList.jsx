@@ -4,13 +4,14 @@ import BookModal from '../components/BookModal';
 import DeleteModal from '../components/DeleteModal';
 import CategoryTree from '../components/CategoryTree';
 
-const BookList = () => {
+const BookList = ({ user }) => {
     const [books, setBooks] = useState([]);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [currentBook, setCurrentBook] = useState(null);
     const [selectedCategory, setSelectedCategory] = useState({ type: 'all' });
     const [treeRefreshKey, setTreeRefreshKey] = useState(0);
+    const [borrowedCount, setBorrowedCount] = useState(0);
 
     const fetchBooks = useCallback(async () => {
         try {
@@ -32,9 +33,19 @@ const BookList = () => {
         }
     }, [selectedCategory]);
 
+    const fetchBorrowedCount = useCallback(async () => {
+        try {
+            const count = await request.get('/borrow/stats/borrowed-count');
+            setBorrowedCount(count);
+        } catch (e) {
+            console.error(e);
+        }
+    }, []);
+
     useEffect(() => {
         fetchBooks();
-    }, [fetchBooks]);
+        fetchBorrowedCount();
+    }, [fetchBooks, fetchBorrowedCount]);
 
     const handleCategorySelect = (category) => {
         setSelectedCategory(category);
@@ -64,8 +75,24 @@ const BookList = () => {
             await request.delete(`/books/${currentBook.id}`);
             setIsDeleteOpen(false);
             fetchBooks();
+            fetchBorrowedCount();
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const handleBorrow = async (book) => {
+        if (book.availableStock <= 0) return;
+        try {
+            await request.post('/borrow/borrow', {
+                bookId: book.id,
+                borrower: user?.username || 'admin'
+            });
+            alert('借阅成功！');
+            fetchBooks();
+            fetchBorrowedCount();
+        } catch (e) {
+            alert(e.message || '借阅失败');
         }
     };
 
@@ -86,6 +113,7 @@ const BookList = () => {
 
     const handleModalSuccess = () => {
         fetchBooks();
+        fetchBorrowedCount();
         setTreeRefreshKey(prev => prev + 1);
     };
 
@@ -101,6 +129,50 @@ const BookList = () => {
             </div>
 
             <div className="flex-1 min-w-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-sm">图书总数</p>
+                                <p className="text-2xl font-bold text-gray-800">{books.length}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-sm">在借总数</p>
+                                <p className="text-2xl font-bold text-orange-600">{borrowedCount}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-sm">可借总数</p>
+                                <p className="text-2xl font-bold text-emerald-600">
+                                    {books.reduce((sum, b) => sum + (b.availableStock || 0), 0)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                     <div className="p-8 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center bg-gradient-to-r from-gray-50 to-white gap-4">
                         <div>
@@ -128,7 +200,7 @@ const BookList = () => {
                                     <th className="px-6 py-5 border-b border-gray-100">作者</th>
                                     <th className="px-6 py-5 border-b border-gray-100">分类</th>
                                     <th className="px-6 py-5 border-b border-gray-100">价格</th>
-                                    <th className="px-6 py-5 border-b border-gray-100">出版日期</th>
+                                    <th className="px-6 py-5 border-b border-gray-100">库存</th>
                                     <th className="px-6 py-5 border-b border-gray-100 text-right">操作</th>
                                 </tr>
                             </thead>
@@ -175,9 +247,34 @@ const BookList = () => {
                                                 ¥{Number(book.price).toFixed(2)}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-5 text-gray-500 text-sm">{book.publishDate}</td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${
+                                                    book.availableStock > 0
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : 'bg-red-100 text-red-700'
+                                                }`}>
+                                                    可借 {book.availableStock || 0}
+                                                </span>
+                                                <span className="text-gray-400 text-xs">
+                                                    / 共 {book.totalStock || 0}
+                                                </span>
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-5 text-right">
-                                            <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleBorrow(book)}
+                                                    disabled={book.availableStock <= 0}
+                                                    title={book.availableStock > 0 ? '借阅' : '库存不足'}
+                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                                        book.availableStock > 0
+                                                            ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm hover:shadow'
+                                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    借阅
+                                                </button>
                                                 <button
                                                     onClick={() => handleEdit(book)}
                                                     className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"

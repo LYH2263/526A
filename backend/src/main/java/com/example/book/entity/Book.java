@@ -14,5 +14,8 @@ public class Book {
     private String description;
     private Long categoryId;
     private String categoryName;
+    private Integer totalStock;
+    private Integer availableStock;
+    private Integer version;
 }
 

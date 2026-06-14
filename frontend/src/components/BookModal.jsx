@@ -39,7 +39,9 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
         price: '',
         publishDate: '',
         description: '',
-        categoryId: null
+        categoryId: null,
+        totalStock: 1,
+        availableStock: 1
     });
     const [categoryTree, setCategoryTree] = useState([]);
     const [cascaderOpen, setCascaderOpen] = useState(false);
@@ -111,7 +113,9 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
                 price: '',
                 publishDate: '',
                 description: '',
-                categoryId: defaultCategoryId
+                categoryId: defaultCategoryId,
+                totalStock: 1,
+                availableStock: 1
             });
             if (defaultCategoryId) {
                 const path = findCategoryPath(categoryTree, defaultCategoryId);
@@ -354,11 +358,28 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">简介</label>
                         <textarea
                             className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none"
-                            rows="4"
+                            rows="3"
                             placeholder="请输入内容简介..."
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">总库存</label>
+                        <input
+                            type="number"
+                            min="0"
+                            required
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                            placeholder="请输入总库存数量"
+                            value={formData.totalStock}
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0;
+                                setFormData({ ...formData, totalStock: val, availableStock: val });
+                            }}
+                        />
+                        <p className="text-gray-400 text-xs mt-1">设置图书总库存数量，初始可借数量与总库存一致</p>
                     </div>
 
                     <div className="pt-4 flex justify-end space-x-3">

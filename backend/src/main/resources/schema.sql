@@ -17,8 +17,28 @@ CREATE TABLE IF NOT EXISTS book (
     publish_date DATE COMMENT '出版日期',
     description TEXT COMMENT '描述',
     category_id BIGINT DEFAULT NULL COMMENT '分类ID',
+    total_stock INT NOT NULL DEFAULT 0 COMMENT '总库存',
+    available_stock INT NOT NULL DEFAULT 0 COMMENT '可借库存',
+    version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
     INDEX idx_category_id (category_id),
     FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS borrow_record (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    book_id BIGINT NOT NULL COMMENT '图书ID',
+    book_title VARCHAR(255) NOT NULL COMMENT '图书名称（冗余）',
+    borrower VARCHAR(50) NOT NULL COMMENT '借阅人',
+    borrow_time DATETIME NOT NULL COMMENT '借出时间',
+    due_time DATETIME NOT NULL COMMENT '应还时间',
+    return_time DATETIME DEFAULT NULL COMMENT '实际归还时间',
+    status VARCHAR(20) NOT NULL DEFAULT 'BORROWED' COMMENT '状态：BORROWED-在借，RETURNED-已还',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_book_id (book_id),
+    INDEX idx_borrower (borrower),
+    INDEX idx_status (status),
+    FOREIGN KEY (book_id) REFERENCES book(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS users (

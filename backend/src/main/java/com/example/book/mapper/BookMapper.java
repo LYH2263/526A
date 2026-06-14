@@ -15,4 +15,10 @@ public interface BookMapper {
     int insert(Book book);
     int update(Book book);
     int deleteById(@Param("id") Long id);
+
+    int decreaseStock(@Param("id") Long id, @Param("version") Integer version);
+
+    int increaseStock(@Param("id") Long id);
+
+    int countBorrowedBooks();
 }

@@ -11,11 +11,15 @@
         <result property="description" column="description"/>
         <result property="categoryId" column="category_id"/>
         <result property="categoryName" column="category_name"/>
+        <result property="totalStock" column="total_stock"/>
+        <result property="availableStock" column="available_stock"/>
+        <result property="version" column="version"/>
     </resultMap>
 
     <select id="findAll" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
-               b.category_id, c.name AS category_name
+               b.category_id, c.name AS category_name,
+               b.total_stock, b.available_stock, b.version
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
         ORDER BY b.id DESC
@@ -23,7 +27,8 @@
 
     <select id="findByCategoryIds" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
-               b.category_id, c.name AS category_name
+               b.category_id, c.name AS category_name,
+               b.total_stock, b.available_stock, b.version
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
         WHERE b.category_id IN
@@ -35,7 +40,8 @@
 
     <select id="findUncategorized" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
-               b.category_id, c.name AS category_name
+               b.category_id, c.name AS category_name,
+               b.total_stock, b.available_stock, b.version
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
         WHERE b.category_id IS NULL
@@ -44,15 +50,16 @@
 
     <select id="findById" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
-               b.category_id, c.name AS category_name
+               b.category_id, c.name AS category_name,
+               b.total_stock, b.available_stock, b.version
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
         WHERE b.id = #{id}
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO book (title, author, price, publish_date, description, category_id)
-        VALUES (#{title}, #{author}, #{price}, #{publishDate}, #{description}, #{categoryId})
+        INSERT INTO book (title, author, price, publish_date, description, category_id, total_stock, available_stock)
+        VALUES (#{title}, #{author}, #{price}, #{publishDate}, #{description}, #{categoryId}, #{totalStock}, #{availableStock})
     </insert>
 
     <update id="update">
@@ -62,12 +69,33 @@
             price = #{price},
             publish_date = #{publishDate},
             description = #{description},
-            category_id = #{categoryId}
+            category_id = #{categoryId},
+            total_stock = #{totalStock},
+            available_stock = #{availableStock}
         WHERE id = #{id}
     </update>
 
     <delete id="deleteById">
         DELETE FROM book WHERE id = #{id}
     </delete>
+
+    <update id="decreaseStock">
+        UPDATE book
+        SET available_stock = available_stock - 1,
+            version = version + 1
+        WHERE id = #{id}
+          AND version = #{version}
+          AND available_stock > 0
+    </update>
+
+    <update id="increaseStock">
+        UPDATE book
+        SET available_stock = available_stock + 1
+        WHERE id = #{id}
+    </update>
+
+    <select id="countBorrowedBooks" resultType="int">
+        SELECT COUNT(*) FROM borrow_record WHERE status = 'BORROWED'
+    </select>
 
 </mapper>
