@@ -1,10 +1,24 @@
+CREATE TABLE IF NOT EXISTS category (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL COMMENT '分类名称',
+    parent_id BIGINT DEFAULT NULL COMMENT '父分类ID，顶级分类为NULL',
+    sort_order INT DEFAULT 0 COMMENT '排序序号',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_parent_id (parent_id),
+    FOREIGN KEY (parent_id) REFERENCES category(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS book (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL COMMENT '书名',
     author VARCHAR(255) NOT NULL COMMENT '作者',
     price DECIMAL(10, 2) NOT NULL COMMENT '价格',
     publish_date DATE COMMENT '出版日期',
-    description TEXT COMMENT '描述'
+    description TEXT COMMENT '描述',
+    category_id BIGINT DEFAULT NULL COMMENT '分类ID',
+    INDEX idx_category_id (category_id),
+    FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS users (

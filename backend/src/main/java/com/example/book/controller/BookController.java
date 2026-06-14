@@ -16,8 +16,18 @@ public class BookController {
     private BookService bookService;
 
     @GetMapping
-    public Result<List<Book>> list() {
+    public Result<List<Book>> list(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false, defaultValue = "false") boolean filterByCategory) {
+        if (filterByCategory) {
+            return Result.success(bookService.findByCategory(categoryId, true));
+        }
         return Result.success(bookService.findAll());
+    }
+
+    @GetMapping("/uncategorized")
+    public Result<List<Book>> listUncategorized() {
+        return Result.success(bookService.findByCategory(null, false));
     }
 
     @GetMapping("/{id}")

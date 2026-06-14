@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.book.mapper.CategoryMapper">
+
+    <resultMap id="CategoryResultMap" type="com.example.book.entity.Category">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="CategoryResultMap">
+        SELECT id, name, parent_id, sort_order, created_at, updated_at
+        FROM category
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="findById" resultMap="CategoryResultMap">
+        SELECT id, name, parent_id, sort_order, created_at, updated_at
+        FROM category WHERE id = #{id}
+    </select>
+
+    <select id="findByParentId" resultMap="CategoryResultMap">
+        SELECT id, name, parent_id, sort_order, created_at, updated_at
+        FROM category
+        WHERE parent_id = #{parentId} OR (parent_id IS NULL AND #{parentId} IS NULL)
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO category (name, parent_id, sort_order)
+        VALUES (#{name}, #{parentId}, #{sortOrder})
+    </insert>
+
+    <update id="update">
+        UPDATE category
+        SET name = #{name},
+            parent_id = #{parentId},
+            sort_order = #{sortOrder}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM category WHERE id = #{id}
+    </delete>
+
+    <select id="countChildren" resultType="int">
+        SELECT COUNT(*) FROM category WHERE parent_id = #{parentId}
+    </select>
+
+    <select id="countBooksInCategory" resultType="int">
+        SELECT COUNT(*) FROM book WHERE category_id = #{categoryId}
+    </select>
+
+    <select id="findAllDescendantIds" resultType="java.lang.Long">
+        WITH RECURSIVE category_hierarchy AS (
+            SELECT id FROM category WHERE id = #{parentId}
+            UNION ALL
+            SELECT c.id FROM category c
+            INNER JOIN category_hierarchy ch ON c.parent_id = ch.id
+        )
+        SELECT id FROM category_hierarchy WHERE id != #{parentId}
+    </select>
+
+</mapper>

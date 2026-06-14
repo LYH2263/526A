@@ -2,17 +2,57 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.book.mapper.BookMapper">
 
-    <select id="findAll" resultType="com.example.book.entity.Book">
-        SELECT id, title, author, price, publish_date, description FROM book
+    <resultMap id="BookResultMap" type="com.example.book.entity.Book">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="author" column="author"/>
+        <result property="price" column="price"/>
+        <result property="publishDate" column="publish_date"/>
+        <result property="description" column="description"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="categoryName" column="category_name"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="BookResultMap">
+        SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
+               b.category_id, c.name AS category_name
+        FROM book b
+        LEFT JOIN category c ON b.category_id = c.id
+        ORDER BY b.id DESC
     </select>
 
-    <select id="findById" resultType="com.example.book.entity.Book">
-        SELECT id, title, author, price, publish_date, description FROM book WHERE id = #{id}
+    <select id="findByCategoryIds" resultMap="BookResultMap">
+        SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
+               b.category_id, c.name AS category_name
+        FROM book b
+        LEFT JOIN category c ON b.category_id = c.id
+        WHERE b.category_id IN
+        <foreach item="id" collection="categoryIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY b.id DESC
+    </select>
+
+    <select id="findUncategorized" resultMap="BookResultMap">
+        SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
+               b.category_id, c.name AS category_name
+        FROM book b
+        LEFT JOIN category c ON b.category_id = c.id
+        WHERE b.category_id IS NULL
+        ORDER BY b.id DESC
+    </select>
+
+    <select id="findById" resultMap="BookResultMap">
+        SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
+               b.category_id, c.name AS category_name
+        FROM book b
+        LEFT JOIN category c ON b.category_id = c.id
+        WHERE b.id = #{id}
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO book (title, author, price, publish_date, description)
-        VALUES (#{title}, #{author}, #{price}, #{publishDate}, #{description})
+        INSERT INTO book (title, author, price, publish_date, description, category_id)
+        VALUES (#{title}, #{author}, #{price}, #{publishDate}, #{description}, #{categoryId})
     </insert>
 
     <update id="update">
@@ -21,7 +61,8 @@
             author = #{author},
             price = #{price},
             publish_date = #{publishDate},
-            description = #{description}
+            description = #{description},
+            category_id = #{categoryId}
         WHERE id = #{id}
     </update>
 

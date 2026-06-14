@@ -9,6 +9,8 @@ import java.util.List;
 @Mapper
 public interface BookMapper {
     List<Book> findAll();
+    List<Book> findByCategoryIds(@Param("categoryIds") List<Long> categoryIds);
+    List<Book> findUncategorized();
     Book findById(@Param("id") Long id);
     int insert(Book book);
     int update(Book book);
