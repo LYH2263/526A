@@ -154,6 +154,17 @@ public class BookService {
         }
     }
 
+    public void updateBookTags(Book book) {
+        if (book.getId() != null) {
+            tagMapper.deleteBookTagsByBookId(book.getId());
+            if (book.getTagIds() != null) {
+                for (Long tagId : book.getTagIds()) {
+                    tagMapper.insertBookTag(book.getId(), tagId);
+                }
+            }
+        }
+    }
+
     public void deleteById(Long id) {
         bookMapper.deleteById(id);
     }

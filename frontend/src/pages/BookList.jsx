@@ -490,6 +490,7 @@ const BookList = ({ user, initialBookId, onNotificationBookCleared }) => {
                         onSuccess={handleModalSuccess}
                         bookToEdit={currentBook}
                         selectedCategory={selectedCategory}
+                        currentUser={user}
                     />
 
                     <DeleteModal

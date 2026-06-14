@@ -83,6 +83,21 @@
         WHERE id = #{id}
     </update>
 
+    <update id="updateWithVersion">
+        UPDATE book
+        SET title = #{title},
+            author = #{author},
+            price = #{price},
+            publish_date = #{publishDate},
+            description = #{description},
+            category_id = #{categoryId},
+            total_stock = #{totalStock},
+            available_stock = #{availableStock},
+            warn_threshold = #{warnThreshold},
+            version = version + 1
+        WHERE id = #{id} AND version = #{version}
+    </update>
+
     <delete id="deleteById">
         DELETE FROM book WHERE id = #{id}
     </delete>

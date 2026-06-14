@@ -25,4 +25,6 @@ public interface BookMapper {
     int updateRatingStats(@Param("id") Long id);
 
     List<Book> findByIds(@Param("ids") List<Long> ids);
+
+    int updateWithVersion(Book book);
 }
