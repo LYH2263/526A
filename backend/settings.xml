@@ -1,0 +1,41 @@
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <!-- Primary: Aliyun public mirror. Excludes the fallback repo below so Maven Central stays reachable. -->
+    <mirror>
+      <id>aliyunmaven</id>
+      <mirrorOf>*,!maven-central-fallback</mirrorOf>
+      <name>aliyun maven</name>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </mirror>
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>fallback-repos</id>
+      <repositories>
+        <!-- Fallback to Maven Central when the Aliyun mirror cannot serve an artifact -->
+        <repository>
+          <id>maven-central-fallback</id>
+          <url>https://repo1.maven.org/maven2</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>maven-central-fallback</id>
+          <url>https://repo1.maven.org/maven2</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>false</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>fallback-repos</activeProfile>
+  </activeProfiles>
+</settings>

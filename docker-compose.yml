@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: longmao-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: book_management
+    ports:
+      - "33526:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./backend/src/main/resources/data.sql:/docker-entrypoint-initdb.d/02_data.sql
+      - ./my.cnf:/etc/mysql/conf.d/my.cnf
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: longmao-backend
+    ports:
+      - "8526:8526"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/book_management?useSSL=false&serverTimezone=UTC&characterEncoding=utf-8&useUnicode=true&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: longmao-frontend
+    ports:
+      - "3526:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
