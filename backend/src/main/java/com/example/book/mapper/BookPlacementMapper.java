@@ -1,10 +1,12 @@
 package com.example.book.mapper;
 
 import com.example.book.entity.BookPlacement;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
+@Mapper
 public interface BookPlacementMapper {
     List<BookPlacement> findAll();
     List<BookPlacement> findByLayerId(@Param("layerId") Long layerId);
@@ -18,4 +20,6 @@ public interface BookPlacementMapper {
     void deleteByLayerId(@Param("layerId") Long layerId);
     void deleteByBookshelfId(@Param("bookshelfId") Long bookshelfId);
     void deleteAll();
+
+    int countByBookId(@Param("bookId") Long bookId);
 }

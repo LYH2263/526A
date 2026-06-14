@@ -22,4 +22,6 @@ public interface TagMapper {
     int deleteBookTagsByTagId(@Param("tagId") Long tagId);
     List<Long> findBookIdsByTagIdsAnd(@Param("tagIds") List<Long> tagIds);
     List<Long> findBookIdsByTagIdsOr(@Param("tagIds") List<Long> tagIds);
+
+    int migrateBookTags(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId);
 }

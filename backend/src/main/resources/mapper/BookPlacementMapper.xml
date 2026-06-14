@@ -78,4 +78,8 @@
         DELETE FROM book_placement
     </delete>
 
+    <select id="countByBookId" resultType="int">
+        SELECT COUNT(*) FROM book_placement WHERE book_id = #{bookId}
+    </select>
+
 </mapper>

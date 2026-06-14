@@ -96,4 +96,19 @@
         </foreach>
     </select>
 
+    <update id="migrateBookTags">
+        UPDATE book_tag
+        SET book_id = #{toBookId}
+        WHERE book_id = #{fromBookId}
+          AND tag_id NOT IN (
+            SELECT tag_id FROM (
+                SELECT tag_id FROM book_tag WHERE book_id = #{toBookId}
+            ) AS tmp
+          )
+    </update>
+
+    <delete id="deleteBookTagsByBookIdNoConflict">
+        DELETE FROM book_tag WHERE book_id = #{fromBookId}
+    </delete>
+
 </mapper>

@@ -67,4 +67,18 @@
         SELECT COUNT(*) FROM book_review WHERE book_id = #{bookId}
     </select>
 
+    <delete id="deleteConflictingReviewsBeforeMigrate">
+        DELETE FROM book_review
+        WHERE book_id = #{fromBookId}
+          AND user_id IN (
+            SELECT user_id FROM (
+                SELECT user_id FROM book_review WHERE book_id = #{toBookId}
+            ) AS tmp
+          )
+    </delete>
+
+    <update id="migrateReviews">
+        UPDATE book_review SET book_id = #{toBookId} WHERE book_id = #{fromBookId}
+    </update>
+
 </mapper>

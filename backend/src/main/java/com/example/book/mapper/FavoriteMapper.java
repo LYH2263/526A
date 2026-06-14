@@ -21,4 +21,8 @@ public interface FavoriteMapper {
     int countByBookId(@Param("bookId") Long bookId);
 
     List<Long> findFavoritedBookIdsByUserId(@Param("userId") Long userId);
+
+    int deleteConflictingBeforeMigrate(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId);
+
+    int migrateFavorites(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId);
 }

@@ -31,4 +31,8 @@ public interface BookReviewMapper {
     double calculateAvgRating(@Param("bookId") Long bookId);
 
     int countReviews(@Param("bookId") Long bookId);
+
+    int deleteConflictingReviewsBeforeMigrate(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId);
+
+    int migrateReviews(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId);
 }

@@ -21,4 +21,8 @@ public interface BorrowRecordMapper {
     int updateReturnStatus(@Param("id") Long id, @Param("returnTime") LocalDateTime returnTime);
 
     BorrowRecord findActiveByBookAndBorrower(@Param("bookId") Long bookId, @Param("borrower") String borrower);
+
+    int migrateBorrowRecords(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId, @Param("toBookTitle") String toBookTitle);
+
+    int countByBookId(@Param("bookId") Long bookId);
 }

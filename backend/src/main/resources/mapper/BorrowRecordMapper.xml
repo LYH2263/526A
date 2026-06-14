@@ -59,4 +59,14 @@
         LIMIT 1
     </select>
 
+    <update id="migrateBorrowRecords">
+        UPDATE borrow_record
+        SET book_id = #{toBookId}, book_title = #{toBookTitle}
+        WHERE book_id = #{fromBookId}
+    </update>
+
+    <select id="countByBookId" resultType="int">
+        SELECT COUNT(*) FROM borrow_record WHERE book_id = #{bookId}
+    </select>
+
 </mapper>

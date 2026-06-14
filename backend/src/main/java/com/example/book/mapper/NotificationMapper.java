@@ -27,4 +27,8 @@ public interface NotificationMapper {
     int updateStockSnapshot(@Param("id") Long id, @Param("stockSnapshot") Integer stockSnapshot);
 
     List<Notification> findByBookIdAndType(@Param("bookId") Long bookId, @Param("type") String type);
+
+    int migrateNotifications(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId, @Param("toBookTitle") String toBookTitle);
+
+    int countByBookId(@Param("bookId") Long bookId);
 }
