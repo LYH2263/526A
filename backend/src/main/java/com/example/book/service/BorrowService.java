@@ -20,6 +20,9 @@ public class BorrowService {
     @Autowired
     private BorrowRecordMapper borrowRecordMapper;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Transactional(rollbackFor = Exception.class)
     public BorrowRecord borrowBook(Long bookId, String borrower, Integer borrowDays) {
         Book book = bookMapper.findById(bookId);
@@ -52,6 +55,8 @@ public class BorrowService {
 
         borrowRecordMapper.insert(record);
 
+        evaluateStockWarning(bookId);
+
         return record;
     }
 
@@ -73,8 +78,19 @@ public class BorrowService {
 
         bookMapper.increaseStock(record.getBookId());
 
+        evaluateStockWarning(record.getBookId());
+
         BorrowRecord updated = borrowRecordMapper.findById(recordId);
         return updated;
+    }
+
+    private void evaluateStockWarning(Long bookId) {
+        Book book = bookMapper.findById(bookId);
+        if (book != null) {
+            int stock = book.getAvailableStock() != null ? book.getAvailableStock() : 0;
+            int threshold = book.getWarnThreshold() != null ? book.getWarnThreshold() : 0;
+            notificationService.reEvaluateStockWarning(bookId, book.getTitle(), stock, threshold);
+        }
     }
 
     public List<BorrowRecord> listRecords(String status, String borrower) {

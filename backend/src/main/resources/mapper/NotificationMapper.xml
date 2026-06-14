@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.book.mapper.NotificationMapper">
+
+    <resultMap id="NotificationResultMap" type="com.example.book.entity.Notification">
+        <id property="id" column="id"/>
+        <result property="type" column="type"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="bookId" column="book_id"/>
+        <result property="bookTitle" column="book_title"/>
+        <result property="stockSnapshot" column="stock_snapshot"/>
+        <result property="isRead" column="is_read"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notification (type, title, content, book_id, book_title, stock_snapshot, is_read)
+        VALUES (#{type}, #{title}, #{content}, #{bookId}, #{bookTitle}, #{stockSnapshot}, #{isRead})
+    </insert>
+
+    <select id="findById" resultMap="NotificationResultMap">
+        SELECT id, type, title, content, book_id, book_title, stock_snapshot, is_read, created_at, updated_at
+        FROM notification
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByPage" resultMap="NotificationResultMap">
+        SELECT id, type, title, content, book_id, book_title, stock_snapshot, is_read, created_at, updated_at
+        FROM notification
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM notification
+    </select>
+
+    <select id="countUnread" resultType="long">
+        SELECT COUNT(*) FROM notification WHERE is_read = 0
+    </select>
+
+    <update id="markAsRead">
+        UPDATE notification SET is_read = 1 WHERE id = #{id}
+    </update>
+
+    <update id="markAllAsRead">
+        UPDATE notification SET is_read = 1 WHERE is_read = 0
+    </update>
+
+    <select id="findUnreadByBookIdAndType" resultMap="NotificationResultMap">
+        SELECT id, type, title, content, book_id, book_title, stock_snapshot, is_read, created_at, updated_at
+        FROM notification
+        WHERE book_id = #{bookId} AND type = #{type} AND is_read = 0
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <update id="updateStockSnapshot">
+        UPDATE notification SET stock_snapshot = #{stockSnapshot}, updated_at = CURRENT_TIMESTAMP WHERE id = #{id}
+    </update>
+
+    <select id="findByBookIdAndType" resultMap="NotificationResultMap">
+        SELECT id, type, title, content, book_id, book_title, stock_snapshot, is_read, created_at, updated_at
+        FROM notification
+        WHERE book_id = #{bookId} AND type = #{type}
+        ORDER BY created_at DESC
+    </select>
+
+</mapper>

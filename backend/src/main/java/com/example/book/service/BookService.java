@@ -24,6 +24,9 @@ public class BookService {
     @Autowired
     private TagMapper tagMapper;
 
+    @Autowired
+    private NotificationService notificationService;
+
     public List<Book> findAll() {
         List<Book> books = bookMapper.findAll();
         enrichTags(books);
@@ -81,21 +84,33 @@ public class BookService {
             if (book.getAvailableStock() == null) {
                 book.setAvailableStock(book.getTotalStock());
             }
+            if (book.getWarnThreshold() == null) {
+                book.setWarnThreshold(0);
+            }
             bookMapper.insert(book);
             if (book.getTagIds() != null) {
                 for (Long tagId : book.getTagIds()) {
                     tagMapper.insertBookTag(book.getId(), tagId);
                 }
             }
+            evaluateStockWarning(book.getId());
         } else {
             Book existing = bookMapper.findById(book.getId());
-            if (existing != null && book.getTotalStock() != null) {
-                int diff = book.getTotalStock() - (existing.getTotalStock() != null ? existing.getTotalStock() : 0);
-                int newAvailable = (existing.getAvailableStock() != null ? existing.getAvailableStock() : 0) + diff;
-                if (newAvailable < 0) {
-                    newAvailable = 0;
+            boolean stockChanged = false;
+            boolean thresholdChanged = false;
+            if (existing != null) {
+                if (book.getTotalStock() != null) {
+                    int diff = book.getTotalStock() - (existing.getTotalStock() != null ? existing.getTotalStock() : 0);
+                    int newAvailable = (existing.getAvailableStock() != null ? existing.getAvailableStock() : 0) + diff;
+                    if (newAvailable < 0) {
+                        newAvailable = 0;
+                    }
+                    book.setAvailableStock(newAvailable);
+                    stockChanged = true;
                 }
-                book.setAvailableStock(newAvailable);
+                if (book.getWarnThreshold() != null && !book.getWarnThreshold().equals(existing.getWarnThreshold())) {
+                    thresholdChanged = true;
+                }
             }
             bookMapper.update(book);
             tagMapper.deleteBookTagsByBookId(book.getId());
@@ -104,6 +119,38 @@ public class BookService {
                     tagMapper.insertBookTag(book.getId(), tagId);
                 }
             }
+            if (stockChanged || thresholdChanged) {
+                evaluateStockWarning(book.getId());
+            }
+        }
+    }
+
+    @Transactional
+    public void adjustStock(Long bookId, int stockDelta) {
+        Book book = bookMapper.findById(bookId);
+        if (book == null) {
+            throw new RuntimeException("图书不存在");
+        }
+        int newTotalStock = (book.getTotalStock() != null ? book.getTotalStock() : 0) + stockDelta;
+        int newAvailableStock = (book.getAvailableStock() != null ? book.getAvailableStock() : 0) + stockDelta;
+        if (newTotalStock < 0) {
+            newTotalStock = 0;
+        }
+        if (newAvailableStock < 0) {
+            newAvailableStock = 0;
+        }
+        book.setTotalStock(newTotalStock);
+        book.setAvailableStock(newAvailableStock);
+        bookMapper.update(book);
+        evaluateStockWarning(bookId);
+    }
+
+    public void evaluateStockWarning(Long bookId) {
+        Book book = bookMapper.findById(bookId);
+        if (book != null) {
+            int stock = book.getAvailableStock() != null ? book.getAvailableStock() : 0;
+            int threshold = book.getWarnThreshold() != null ? book.getWarnThreshold() : 0;
+            notificationService.reEvaluateStockWarning(bookId, book.getTitle(), stock, threshold);
         }
     }
 

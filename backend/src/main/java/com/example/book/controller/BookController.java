@@ -78,4 +78,12 @@ public class BookController {
         bookService.deleteById(id);
         return Result.success(null);
     }
+
+    @PutMapping("/{id}/stock")
+    public Result<Void> adjustStock(
+            @PathVariable Long id,
+            @RequestParam int delta) {
+        bookService.adjustStock(id, delta);
+        return Result.success(null);
+    }
 }

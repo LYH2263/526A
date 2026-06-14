@@ -7,7 +7,7 @@ import BookDetailModal from '../components/BookDetailModal';
 import StarRating from '../components/StarRating';
 import TagFilter from '../components/TagFilter';
 
-const BookList = ({ user }) => {
+const BookList = ({ user, initialBookId, onNotificationBookCleared }) => {
     const [books, setBooks] = useState([]);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -68,6 +68,19 @@ const BookList = ({ user }) => {
         fetchBorrowedCount();
     }, [fetchBooks, fetchBorrowedCount]);
 
+    useEffect(() => {
+        if (initialBookId && books.length > 0) {
+            const book = books.find(b => b.id === initialBookId);
+            if (book) {
+                setDetailBook(book);
+                setIsDetailOpen(true);
+            }
+            if (onNotificationBookCleared) {
+                onNotificationBookCleared();
+            }
+        }
+    }, [initialBookId, books, onNotificationBookCleared]);
+
     const handleCategorySelect = (category) => {
         setSelectedCategory(category);
     };
@@ -117,6 +130,7 @@ const BookList = ({ user }) => {
             alert('借阅成功！');
             fetchBooks();
             fetchBorrowedCount();
+            window.dispatchEvent(new CustomEvent('stock-changed'));
         } catch (e) {
             alert(e.message || '借阅失败');
         }
@@ -168,6 +182,7 @@ const BookList = ({ user }) => {
         fetchBooks();
         fetchBorrowedCount();
         setTreeRefreshKey(prev => prev + 1);
+        window.dispatchEvent(new CustomEvent('stock-changed'));
     };
 
     const handleReviewUpdated = async () => {
@@ -354,15 +369,27 @@ const BookList = ({ user }) => {
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-2">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${
-                                                    book.availableStock > 0
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-red-100 text-red-700'
+                                                    book.warnThreshold > 0 && book.availableStock <= book.warnThreshold
+                                                        ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                                                        : book.availableStock > 0
+                                                            ? 'bg-green-100 text-green-700'
+                                                            : 'bg-red-100 text-red-700'
                                                 }`}>
+                                                    {book.warnThreshold > 0 && book.availableStock <= book.warnThreshold && (
+                                                        <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                        </svg>
+                                                    )}
                                                     可借 {book.availableStock || 0}
                                                 </span>
                                                 <span className="text-gray-400 text-xs">
                                                     / 共 {book.totalStock || 0}
                                                 </span>
+                                                {book.warnThreshold > 0 && (
+                                                    <span className="text-xs text-gray-400">
+                                                        (预警: {book.warnThreshold})
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5">

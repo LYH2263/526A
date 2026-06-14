@@ -43,6 +43,7 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
         categoryId: null,
         totalStock: 1,
         availableStock: 1,
+        warnThreshold: 0,
         tagIds: []
     });
     const [categoryTree, setCategoryTree] = useState([]);
@@ -121,6 +122,7 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
                 categoryId: defaultCategoryId,
                 totalStock: 1,
                 availableStock: 1,
+                warnThreshold: 0,
                 tagIds: []
             });
             if (defaultCategoryId) {
@@ -380,22 +382,38 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">总库存</label>
-                        <input
-                            type="number"
-                            min="0"
-                            required
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                            placeholder="请输入总库存数量"
-                            value={formData.totalStock}
-                            onChange={(e) => {
-                                const val = parseInt(e.target.value) || 0;
-                                setFormData({ ...formData, totalStock: val, availableStock: val });
-                            }}
-                        />
-                        <p className="text-gray-400 text-xs mt-1">设置图书总库存数量，初始可借数量与总库存一致</p>
+                    <div className="grid grid-cols-2 gap-5">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">总库存</label>
+                            <input
+                                type="number"
+                                min="0"
+                                required
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                placeholder="请输入总库存数量"
+                                value={formData.totalStock}
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    setFormData({ ...formData, totalStock: val, availableStock: val });
+                                }}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">预警阈值</label>
+                            <input
+                                type="number"
+                                min="0"
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                placeholder="0表示不预警"
+                                value={formData.warnThreshold}
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    setFormData({ ...formData, warnThreshold: val });
+                                }}
+                            />
+                        </div>
                     </div>
+                    <p className="text-gray-400 text-xs -mt-2">当可借库存低于预警阈值时，系统会自动发送库存预警通知。设为 0 表示不启用预警。</p>
 
                     <div className="pt-4 flex justify-end space-x-3">
                         <button

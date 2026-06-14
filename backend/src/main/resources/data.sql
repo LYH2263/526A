@@ -1,7 +1,7 @@
-INSERT INTO book (title, author, price, publish_date, description, total_stock, available_stock) VALUES 
-('三体', '刘慈欣', 39.00, '2008-01-01', '中国科幻基石', 5, 5),
-('活着', '余华', 25.00, '1998-05-01', '讲述了人如何去承受巨大的苦难', 3, 3),
-('百年孤独', '加西亚·马尔克斯', 45.00, '2011-06-01', '拉丁美洲魔幻现实主义文学的代表作', 2, 2);
+INSERT INTO book (title, author, price, publish_date, description, total_stock, available_stock, warn_threshold) VALUES 
+('三体', '刘慈欣', 39.00, '2008-01-01', '中国科幻基石', 5, 5, 2),
+('活着', '余华', 25.00, '1998-05-01', '讲述了人如何去承受巨大的苦难', 3, 3, 1),
+('百年孤独', '加西亚·马尔克斯', 45.00, '2011-06-01', '拉丁美洲魔幻现实主义文学的代表作', 2, 2, 1);
 
 INSERT INTO tag (name, color) VALUES
 ('科幻', '#8B5CF6'),

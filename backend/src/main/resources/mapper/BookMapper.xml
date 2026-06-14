@@ -13,6 +13,7 @@
         <result property="categoryName" column="category_name"/>
         <result property="totalStock" column="total_stock"/>
         <result property="availableStock" column="available_stock"/>
+        <result property="warnThreshold" column="warn_threshold"/>
         <result property="version" column="version"/>
         <result property="avgRating" column="avg_rating"/>
         <result property="reviewCount" column="review_count"/>
@@ -21,7 +22,7 @@
     <select id="findAll" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
                b.category_id, c.name AS category_name,
-               b.total_stock, b.available_stock, b.version,
+               b.total_stock, b.available_stock, b.warn_threshold, b.version,
                b.avg_rating, b.review_count
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
@@ -31,7 +32,7 @@
     <select id="findByCategoryIds" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
                b.category_id, c.name AS category_name,
-               b.total_stock, b.available_stock, b.version,
+               b.total_stock, b.available_stock, b.warn_threshold, b.version,
                b.avg_rating, b.review_count
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
@@ -45,7 +46,7 @@
     <select id="findUncategorized" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
                b.category_id, c.name AS category_name,
-               b.total_stock, b.available_stock, b.version,
+               b.total_stock, b.available_stock, b.warn_threshold, b.version,
                b.avg_rating, b.review_count
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
@@ -56,7 +57,7 @@
     <select id="findById" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
                b.category_id, c.name AS category_name,
-               b.total_stock, b.available_stock, b.version,
+               b.total_stock, b.available_stock, b.warn_threshold, b.version,
                b.avg_rating, b.review_count
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
@@ -64,8 +65,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO book (title, author, price, publish_date, description, category_id, total_stock, available_stock)
-        VALUES (#{title}, #{author}, #{price}, #{publishDate}, #{description}, #{categoryId}, #{totalStock}, #{availableStock})
+        INSERT INTO book (title, author, price, publish_date, description, category_id, total_stock, available_stock, warn_threshold)
+        VALUES (#{title}, #{author}, #{price}, #{publishDate}, #{description}, #{categoryId}, #{totalStock}, #{availableStock}, #{warnThreshold})
     </insert>
 
     <update id="update">
@@ -77,7 +78,8 @@
             description = #{description},
             category_id = #{categoryId},
             total_stock = #{totalStock},
-            available_stock = #{availableStock}
+            available_stock = #{availableStock},
+            warn_threshold = #{warnThreshold}
         WHERE id = #{id}
     </update>
 
@@ -118,7 +120,7 @@
     <select id="findByIds" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
                b.category_id, c.name AS category_name,
-               b.total_stock, b.available_stock, b.version,
+               b.total_stock, b.available_stock, b.warn_threshold, b.version,
                b.avg_rating, b.review_count
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id

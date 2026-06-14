@@ -1,12 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import BookList from './pages/BookList';
 import BorrowRecords from './pages/BorrowRecords';
 import MyFavorites from './pages/MyFavorites';
 import Login from './components/Login';
+import NotificationDropdown from './components/NotificationDropdown';
 
 function App() {
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('books');
+  const [notificationBookId, setNotificationBookId] = useState(null);
+  const [bookListRefreshKey, setBookListRefreshKey] = useState(0);
+
+  const handleNavigateToBook = useCallback((bookId) => {
+    setCurrentPage('books');
+    setNotificationBookId(bookId);
+    setBookListRefreshKey(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -75,7 +84,8 @@ function App() {
                 </nav>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+                <NotificationDropdown onNavigateToBook={handleNavigateToBook} />
                 <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100">
                     <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-[10px] text-white font-bold">
                         {user.username.charAt(0).toUpperCase()}
@@ -114,7 +124,14 @@ function App() {
        </div>
 
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {currentPage === 'books' && <BookList user={user} />}
+            {currentPage === 'books' && (
+                <BookList 
+                    user={user} 
+                    key={bookListRefreshKey}
+                    initialBookId={notificationBookId}
+                    onNotificationBookCleared={() => setNotificationBookId(null)}
+                />
+            )}
             {currentPage === 'favorites' && <MyFavorites user={user} />}
             {currentPage === 'records' && <BorrowRecords user={user} />}
         </main>
