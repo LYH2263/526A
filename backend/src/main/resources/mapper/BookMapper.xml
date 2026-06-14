@@ -14,12 +14,15 @@
         <result property="totalStock" column="total_stock"/>
         <result property="availableStock" column="available_stock"/>
         <result property="version" column="version"/>
+        <result property="avgRating" column="avg_rating"/>
+        <result property="reviewCount" column="review_count"/>
     </resultMap>
 
     <select id="findAll" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
                b.category_id, c.name AS category_name,
-               b.total_stock, b.available_stock, b.version
+               b.total_stock, b.available_stock, b.version,
+               b.avg_rating, b.review_count
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
         ORDER BY b.id DESC
@@ -28,7 +31,8 @@
     <select id="findByCategoryIds" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
                b.category_id, c.name AS category_name,
-               b.total_stock, b.available_stock, b.version
+               b.total_stock, b.available_stock, b.version,
+               b.avg_rating, b.review_count
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
         WHERE b.category_id IN
@@ -41,7 +45,8 @@
     <select id="findUncategorized" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
                b.category_id, c.name AS category_name,
-               b.total_stock, b.available_stock, b.version
+               b.total_stock, b.available_stock, b.version,
+               b.avg_rating, b.review_count
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
         WHERE b.category_id IS NULL
@@ -51,7 +56,8 @@
     <select id="findById" resultMap="BookResultMap">
         SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
                b.category_id, c.name AS category_name,
-               b.total_stock, b.available_stock, b.version
+               b.total_stock, b.available_stock, b.version,
+               b.avg_rating, b.review_count
         FROM book b
         LEFT JOIN category c ON b.category_id = c.id
         WHERE b.id = #{id}
@@ -97,5 +103,16 @@
     <select id="countBorrowedBooks" resultType="int">
         SELECT COUNT(*) FROM borrow_record WHERE status = 'BORROWED'
     </select>
+
+    <update id="updateRatingStats">
+        UPDATE book
+        SET avg_rating = COALESCE((
+            SELECT AVG(rating) FROM (SELECT rating FROM book_review WHERE book_id = #{id}) AS tmp
+        ), 0),
+        review_count = COALESCE((
+            SELECT COUNT(*) FROM (SELECT id FROM book_review WHERE book_id = #{id}) AS tmp2
+        ), 0)
+        WHERE id = #{id}
+    </update>
 
 </mapper>

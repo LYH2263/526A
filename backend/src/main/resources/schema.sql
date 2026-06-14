@@ -20,8 +20,26 @@ CREATE TABLE IF NOT EXISTS book (
     total_stock INT NOT NULL DEFAULT 0 COMMENT '总库存',
     available_stock INT NOT NULL DEFAULT 0 COMMENT '可借库存',
     version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    avg_rating DECIMAL(3, 2) DEFAULT 0.00 COMMENT '平均评分',
+    review_count INT NOT NULL DEFAULT 0 COMMENT '评论数量',
     INDEX idx_category_id (category_id),
     FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS book_review (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    book_id BIGINT NOT NULL COMMENT '图书ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    username VARCHAR(50) NOT NULL COMMENT '用户名（冗余）',
+    rating TINYINT NOT NULL COMMENT '评分：1-5星',
+    content TEXT COMMENT '评论文本',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_book_user (book_id, user_id),
+    INDEX idx_book_id (book_id),
+    INDEX idx_user_id (user_id),
+    FOREIGN KEY (book_id) REFERENCES book(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS borrow_record (

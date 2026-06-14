@@ -21,4 +21,6 @@ public interface BookMapper {
     int increaseStock(@Param("id") Long id);
 
     int countBorrowedBooks();
+
+    int updateRatingStats(@Param("id") Long id);
 }

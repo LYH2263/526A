@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.book.mapper.BookReviewMapper">
+
+    <resultMap id="BookReviewResultMap" type="com.example.book.entity.BookReview">
+        <id property="id" column="id"/>
+        <result property="bookId" column="book_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="username" column="username"/>
+        <result property="rating" column="rating"/>
+        <result property="content" column="content"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findById" resultMap="BookReviewResultMap">
+        SELECT id, book_id, user_id, username, rating, content, created_at, updated_at
+        FROM book_review
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByBookIdAndUserId" resultMap="BookReviewResultMap">
+        SELECT id, book_id, user_id, username, rating, content, created_at, updated_at
+        FROM book_review
+        WHERE book_id = #{bookId} AND user_id = #{userId}
+    </select>
+
+    <select id="findByBookId" resultMap="BookReviewResultMap">
+        SELECT id, book_id, user_id, username, rating, content, created_at, updated_at
+        FROM book_review
+        WHERE book_id = #{bookId}
+        ORDER BY
+        <choose>
+            <when test="sortBy == 'rating' and sortOrder == 'asc'">rating ASC, created_at DESC</when>
+            <when test="sortBy == 'rating' and sortOrder == 'desc'">rating DESC, created_at DESC</when>
+            <when test="sortBy == 'time' and sortOrder == 'asc'">created_at ASC</when>
+            <otherwise>created_at DESC</otherwise>
+        </choose>
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countByBookId" resultType="long">
+        SELECT COUNT(*) FROM book_review WHERE book_id = #{bookId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO book_review (book_id, user_id, username, rating, content)
+        VALUES (#{bookId}, #{userId}, #{username}, #{rating}, #{content})
+    </insert>
+
+    <update id="update">
+        UPDATE book_review
+        SET rating = #{rating},
+            content = #{content}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM book_review WHERE id = #{id}
+    </delete>
+
+    <select id="calculateAvgRating" resultType="double">
+        SELECT COALESCE(AVG(rating), 0) FROM book_review WHERE book_id = #{bookId}
+    </select>
+
+    <select id="countReviews" resultType="int">
+        SELECT COUNT(*) FROM book_review WHERE book_id = #{bookId}
+    </select>
+
+</mapper>

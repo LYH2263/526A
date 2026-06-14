@@ -6,4 +6,8 @@
         SELECT id, username, password FROM users WHERE username = #{username}
     </select>
 
+    <select id="findById" resultType="com.example.book.entity.User">
+        SELECT id, username, password FROM users WHERE id = #{id}
+    </select>
+
 </mapper>

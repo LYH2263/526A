@@ -17,5 +17,7 @@ public class Book {
     private Integer totalStock;
     private Integer availableStock;
     private Integer version;
+    private java.math.BigDecimal avgRating;
+    private Integer reviewCount;
 }
 
