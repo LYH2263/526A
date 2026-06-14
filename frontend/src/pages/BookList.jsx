@@ -5,6 +5,7 @@ import DeleteModal from '../components/DeleteModal';
 import CategoryTree from '../components/CategoryTree';
 import BookDetailModal from '../components/BookDetailModal';
 import StarRating from '../components/StarRating';
+import TagFilter from '../components/TagFilter';
 
 const BookList = ({ user }) => {
     const [books, setBooks] = useState([]);
@@ -16,13 +17,19 @@ const BookList = ({ user }) => {
     const [borrowedCount, setBorrowedCount] = useState(0);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [detailBook, setDetailBook] = useState(null);
+    const [selectedTagIds, setSelectedTagIds] = useState([]);
+    const [tagSemantic, setTagSemantic] = useState('OR');
 
     const fetchBooks = useCallback(async () => {
         try {
             let url = '/books';
             const params = new URLSearchParams();
 
-            if (selectedCategory.type === 'category') {
+            if (selectedTagIds.length > 0) {
+                selectedTagIds.forEach(id => params.append('tagIds', id));
+                params.append('tagSemantic', tagSemantic);
+                url += `?${params.toString()}`;
+            } else if (selectedCategory.type === 'category') {
                 params.append('filterByCategory', 'true');
                 params.append('categoryId', selectedCategory.id);
                 url += `?${params.toString()}`;
@@ -37,7 +44,7 @@ const BookList = ({ user }) => {
             console.error(e);
             return [];
         }
-    }, [selectedCategory]);
+    }, [selectedCategory, selectedTagIds, tagSemantic]);
 
     const fetchBorrowedCount = useCallback(async () => {
         try {
@@ -194,6 +201,13 @@ const BookList = ({ user }) => {
                     </div>
                 </div>
 
+                <TagFilter
+                    selectedTagIds={selectedTagIds}
+                    onTagsChange={setSelectedTagIds}
+                    semantic={tagSemantic}
+                    onSemanticChange={setTagSemantic}
+                />
+
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                     <div className="p-8 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center bg-gradient-to-r from-gray-50 to-white gap-4">
                         <div>
@@ -220,6 +234,7 @@ const BookList = ({ user }) => {
                                     <th className="px-8 py-5 border-b border-gray-100">书籍信息</th>
                                     <th className="px-6 py-5 border-b border-gray-100">作者</th>
                                     <th className="px-6 py-5 border-b border-gray-100">分类</th>
+                                    <th className="px-6 py-5 border-b border-gray-100">标签</th>
                                     <th className="px-6 py-5 border-b border-gray-100">价格</th>
                                     <th className="px-6 py-5 border-b border-gray-100">库存</th>
                                     <th className="px-6 py-5 border-b border-gray-100 text-right">操作</th>
@@ -277,6 +292,23 @@ const BookList = ({ user }) => {
                                                     未分类
                                                 </span>
                                             )}
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex flex-wrap gap-1">
+                                                {book.tags && book.tags.length > 0 ? (
+                                                    book.tags.map(tag => (
+                                                        <span
+                                                            key={tag.id}
+                                                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium text-white"
+                                                            style={{ backgroundColor: tag.color }}
+                                                        >
+                                                            {tag.name}
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-xs text-gray-400">-</span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-5">
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800">

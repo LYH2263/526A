@@ -115,4 +115,18 @@
         WHERE id = #{id}
     </update>
 
+    <select id="findByIds" resultMap="BookResultMap">
+        SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
+               b.category_id, c.name AS category_name,
+               b.total_stock, b.available_stock, b.version,
+               b.avg_rating, b.review_count
+        FROM book b
+        LEFT JOIN category c ON b.category_id = c.id
+        WHERE b.id IN
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY b.id DESC
+    </select>
+
 </mapper>

@@ -3,6 +3,7 @@ package com.example.book.entity;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class Book {
@@ -19,5 +20,7 @@ public class Book {
     private Integer version;
     private java.math.BigDecimal avgRating;
     private Integer reviewCount;
+    private List<Tag> tags;
+    private List<Long> tagIds;
 }
 

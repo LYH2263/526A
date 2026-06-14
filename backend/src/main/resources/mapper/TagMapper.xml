@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.book.mapper.TagMapper">
+
+    <resultMap id="TagResultMap" type="com.example.book.entity.Tag">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="color" column="color"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="bookCount" column="book_count"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="TagResultMap">
+        SELECT t.id, t.name, t.color, t.created_at, t.updated_at,
+               (SELECT COUNT(*) FROM book_tag bt WHERE bt.tag_id = t.id) AS book_count
+        FROM tag t
+        ORDER BY t.id DESC
+    </select>
+
+    <select id="findById" resultMap="TagResultMap">
+        SELECT t.id, t.name, t.color, t.created_at, t.updated_at,
+               (SELECT COUNT(*) FROM book_tag bt WHERE bt.tag_id = t.id) AS book_count
+        FROM tag t
+        WHERE t.id = #{id}
+    </select>
+
+    <select id="findByName" resultMap="TagResultMap">
+        SELECT t.id, t.name, t.color, t.created_at, t.updated_at
+        FROM tag t
+        WHERE t.name = #{name}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tag (name, color)
+        VALUES (#{name}, #{color})
+    </insert>
+
+    <update id="update">
+        UPDATE tag
+        SET name = #{name},
+            color = #{color}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM tag WHERE id = #{id}
+    </delete>
+
+    <select id="countBooksByTagId" resultType="int">
+        SELECT COUNT(*) FROM book_tag WHERE tag_id = #{tagId}
+    </select>
+
+    <select id="findByBookId" resultMap="TagResultMap">
+        SELECT t.id, t.name, t.color
+        FROM tag t
+        INNER JOIN book_tag bt ON t.id = bt.tag_id
+        WHERE bt.book_id = #{bookId}
+        ORDER BY t.id
+    </select>
+
+    <insert id="insertBookTag">
+        INSERT IGNORE INTO book_tag (book_id, tag_id)
+        VALUES (#{bookId}, #{tagId})
+    </insert>
+
+    <delete id="deleteBookTag">
+        DELETE FROM book_tag WHERE book_id = #{bookId} AND tag_id = #{tagId}
+    </delete>
+
+    <delete id="deleteBookTagsByBookId">
+        DELETE FROM book_tag WHERE book_id = #{bookId}
+    </delete>
+
+    <delete id="deleteBookTagsByTagId">
+        DELETE FROM book_tag WHERE tag_id = #{tagId}
+    </delete>
+
+    <select id="findBookIdsByTagIdsAnd" resultType="long">
+        SELECT bt.book_id
+        FROM book_tag bt
+        WHERE bt.tag_id IN
+        <foreach item="tagId" collection="tagIds" open="(" separator="," close=")">
+            #{tagId}
+        </foreach>
+        GROUP BY bt.book_id
+        HAVING COUNT(DISTINCT bt.tag_id) = #{tagIds.size()}
+    </select>
+
+    <select id="findBookIdsByTagIdsOr" resultType="long">
+        SELECT DISTINCT bt.book_id
+        FROM book_tag bt
+        WHERE bt.tag_id IN
+        <foreach item="tagId" collection="tagIds" open="(" separator="," close=")">
+            #{tagId}
+        </foreach>
+    </select>
+
+</mapper>

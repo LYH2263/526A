@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import request from '../api/request';
+import TagSelect from './TagSelect';
 
 const flattenTreeForCascader = (tree, level = 0, path = []) => {
     const result = [];
@@ -41,7 +42,8 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
         description: '',
         categoryId: null,
         totalStock: 1,
-        availableStock: 1
+        availableStock: 1,
+        tagIds: []
     });
     const [categoryTree, setCategoryTree] = useState([]);
     const [cascaderOpen, setCascaderOpen] = useState(false);
@@ -95,7 +97,10 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
         if (!isOpen) return;
 
         if (bookToEdit) {
-            setFormData(bookToEdit);
+            setFormData({
+                ...bookToEdit,
+                tagIds: bookToEdit.tags ? bookToEdit.tags.map(t => t.id) : []
+            });
             if (bookToEdit.categoryId) {
                 const path = findCategoryPath(categoryTree, bookToEdit.categoryId);
                 setSelectedPath(path || [bookToEdit.categoryId]);
@@ -115,7 +120,8 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
                 description: '',
                 categoryId: defaultCategoryId,
                 totalStock: 1,
-                availableStock: 1
+                availableStock: 1,
+                tagIds: []
             });
             if (defaultCategoryId) {
                 const path = findCategoryPath(categoryTree, defaultCategoryId);
@@ -316,6 +322,15 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory })
                             )}
                         </div>
                         <p className="text-gray-400 text-xs mt-1">选择层级分类，点击最终分类完成选择；留空则为未分类</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">标签</label>
+                        <TagSelect
+                            value={formData.tagIds}
+                            onChange={(tagIds) => setFormData({ ...formData, tagIds })}
+                        />
+                        <p className="text-gray-400 text-xs mt-1">输入标签名回车创建新标签，或从下拉列表选择已有标签</p>
                     </div>
 
                     <div>

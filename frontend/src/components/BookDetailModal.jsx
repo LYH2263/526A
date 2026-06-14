@@ -180,6 +180,19 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
                                     {book.categoryName}
                                 </span>
                             )}
+                            {book.tags && book.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                    {book.tags.map(tag => (
+                                        <span
+                                            key={tag.id}
+                                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium text-white"
+                                            style={{ backgroundColor: tag.color }}
+                                        >
+                                            {tag.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 

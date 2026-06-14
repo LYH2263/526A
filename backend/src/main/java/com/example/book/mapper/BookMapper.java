@@ -23,4 +23,6 @@ public interface BookMapper {
     int countBorrowedBooks();
 
     int updateRatingStats(@Param("id") Long id);
+
+    List<Book> findByIds(@Param("ids") List<Long> ids);
 }
