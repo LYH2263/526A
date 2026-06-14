@@ -145,6 +145,27 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
 
     const totalPages = Math.ceil(totalReviews / pageSize);
 
+    const handleToggleFavorite = async () => {
+        if (!user) {
+            alert('请先登录');
+            return;
+        }
+        try {
+            const result = await request.post('/favorites/toggle', {
+                userId: user.id,
+                bookId: book.id,
+                favorited: !!book.favorited
+            });
+            const updatedBook = { ...book, favorited: result.favorited, favoriteCount: result.favoriteCount };
+            if (typeof onReviewUpdated === 'function') {
+                onReviewUpdated(updatedBook);
+            }
+            window.dispatchEvent(new CustomEvent('favorite-changed', { detail: { bookId: book.id, ...result } }));
+        } catch (e) {
+            alert(e.message || '操作失败');
+        }
+    };
+
     if (!isOpen || !book) return null;
 
     return (
@@ -165,7 +186,32 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
                             {book.title.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h3 className="text-xl font-bold text-gray-800 mb-1">{book.title}</h3>
+                            <div className="flex items-start justify-between gap-3">
+                                <h3 className="text-xl font-bold text-gray-800 mb-1">{book.title}</h3>
+                                <button
+                                    onClick={handleToggleFavorite}
+                                    className="flex items-center gap-1.5 flex-shrink-0 transition-all p-2 rounded-lg hover:bg-gray-50"
+                                    title={book.favorited ? '取消收藏' : '收藏'}
+                                >
+                                    <svg
+                                        className={`w-6 h-6 transition-all ${
+                                            book.favorited
+                                                ? 'text-red-500 fill-current scale-110'
+                                                : 'text-gray-300 hover:text-red-400'
+                                        }`}
+                                        fill={book.favorited ? 'currentColor' : 'none'}
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
+                                    <span className={`text-sm font-medium ${
+                                        book.favorited ? 'text-red-500' : 'text-gray-400'
+                                    }`}>
+                                        {book.favoriteCount || 0}
+                                    </span>
+                                </button>
+                            </div>
                             <p className="text-gray-500 text-sm mb-2">作者：{book.author}</p>
                             <div className="flex items-center gap-3">
                                 <StarRating

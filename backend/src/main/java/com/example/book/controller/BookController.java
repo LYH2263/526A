@@ -3,6 +3,7 @@ package com.example.book.controller;
 import com.example.book.common.Result;
 import com.example.book.entity.Book;
 import com.example.book.service.BookService;
+import com.example.book.service.FavoriteService;
 import com.example.book.service.TagService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -19,30 +20,45 @@ public class BookController {
     @Autowired
     private TagService tagService;
 
+    @Autowired
+    private FavoriteService favoriteService;
+
     @GetMapping
     public Result<List<Book>> list(
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false, defaultValue = "false") boolean filterByCategory,
             @RequestParam(required = false) List<Long> tagIds,
-            @RequestParam(required = false, defaultValue = "OR") String tagSemantic) {
+            @RequestParam(required = false, defaultValue = "OR") String tagSemantic,
+            @RequestParam(required = false) Long userId) {
+        List<Book> books;
         if (tagIds != null && !tagIds.isEmpty()) {
             List<Long> bookIds = tagService.findBookIdsByTagIds(tagIds, tagSemantic);
-            return Result.success(bookService.findByIds(bookIds));
+            books = bookService.findByIds(bookIds);
+        } else if (filterByCategory) {
+            books = bookService.findByCategory(categoryId, true);
+        } else {
+            books = bookService.findAll();
         }
-        if (filterByCategory) {
-            return Result.success(bookService.findByCategory(categoryId, true));
-        }
-        return Result.success(bookService.findAll());
+        favoriteService.enrichBooksWithFavoriteInfo(books, userId);
+        return Result.success(books);
     }
 
     @GetMapping("/uncategorized")
-    public Result<List<Book>> listUncategorized() {
-        return Result.success(bookService.findByCategory(null, false));
+    public Result<List<Book>> listUncategorized(@RequestParam(required = false) Long userId) {
+        List<Book> books = bookService.findByCategory(null, false);
+        favoriteService.enrichBooksWithFavoriteInfo(books, userId);
+        return Result.success(books);
     }
 
     @GetMapping("/{id}")
-    public Result<Book> get(@PathVariable Long id) {
-        return Result.success(bookService.findById(id));
+    public Result<Book> get(@PathVariable Long id, @RequestParam(required = false) Long userId) {
+        Book book = bookService.findById(id);
+        if (book != null && userId != null) {
+            favoriteService.enrichBooksWithFavoriteInfo(java.util.Collections.singletonList(book), userId);
+        } else if (book != null) {
+            favoriteService.enrichBooksWithFavoriteInfo(java.util.Collections.singletonList(book), null);
+        }
+        return Result.success(book);
     }
 
     @PostMapping

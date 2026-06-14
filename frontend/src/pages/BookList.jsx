@@ -25,6 +25,10 @@ const BookList = ({ user }) => {
             let url = '/books';
             const params = new URLSearchParams();
 
+            if (user?.id) {
+                params.append('userId', user.id);
+            }
+
             if (selectedTagIds.length > 0) {
                 selectedTagIds.forEach(id => params.append('tagIds', id));
                 params.append('tagSemantic', tagSemantic);
@@ -34,7 +38,11 @@ const BookList = ({ user }) => {
                 params.append('categoryId', selectedCategory.id);
                 url += `?${params.toString()}`;
             } else if (selectedCategory.type === 'uncategorized') {
-                url = '/books/uncategorized';
+                const qs = params.toString();
+                url = qs ? `/books/uncategorized?${qs}` : '/books/uncategorized';
+            } else {
+                const qs = params.toString();
+                if (qs) url += `?${qs}`;
             }
 
             const data = await request.get(url);
@@ -44,7 +52,7 @@ const BookList = ({ user }) => {
             console.error(e);
             return [];
         }
-    }, [selectedCategory, selectedTagIds, tagSemantic]);
+    }, [selectedCategory, selectedTagIds, tagSemantic, user]);
 
     const fetchBorrowedCount = useCallback(async () => {
         try {
@@ -111,6 +119,33 @@ const BookList = ({ user }) => {
             fetchBorrowedCount();
         } catch (e) {
             alert(e.message || '借阅失败');
+        }
+    };
+
+    const handleToggleFavorite = async (book, e) => {
+        e.stopPropagation();
+        if (!user) {
+            alert('请先登录');
+            return;
+        }
+        try {
+            const result = await request.post('/favorites/toggle', {
+                userId: user.id,
+                bookId: book.id,
+                favorited: !!book.favorited
+            });
+            setBooks(prev => prev.map(b => {
+                if (b.id === book.id) {
+                    return { ...b, favorited: result.favorited, favoriteCount: result.favoriteCount };
+                }
+                return b;
+            }));
+            if (detailBook && detailBook.id === book.id) {
+                setDetailBook(prev => ({ ...prev, favorited: result.favorited, favoriteCount: result.favoriteCount }));
+            }
+            window.dispatchEvent(new CustomEvent('favorite-changed', { detail: { bookId: book.id, ...result } }));
+        } catch (e) {
+            alert(e.message || '操作失败');
         }
     };
 
@@ -237,6 +272,7 @@ const BookList = ({ user }) => {
                                     <th className="px-6 py-5 border-b border-gray-100">标签</th>
                                     <th className="px-6 py-5 border-b border-gray-100">价格</th>
                                     <th className="px-6 py-5 border-b border-gray-100">库存</th>
+                                    <th className="px-6 py-5 border-b border-gray-100">收藏</th>
                                     <th className="px-6 py-5 border-b border-gray-100 text-right">操作</th>
                                 </tr>
                             </thead>
@@ -328,6 +364,31 @@ const BookList = ({ user }) => {
                                                     / 共 {book.totalStock || 0}
                                                 </span>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <button
+                                                onClick={(e) => handleToggleFavorite(book, e)}
+                                                className="flex items-center gap-1.5 group/fav transition-all"
+                                                title={book.favorited ? '取消收藏' : '收藏'}
+                                            >
+                                                <svg
+                                                    className={`w-5 h-5 transition-all ${
+                                                        book.favorited
+                                                            ? 'text-red-500 fill-current scale-110'
+                                                            : 'text-gray-300 hover:text-red-400 group-hover/fav:scale-110'
+                                                    }`}
+                                                    fill={book.favorited ? 'currentColor' : 'none'}
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                </svg>
+                                                <span className={`text-sm font-medium ${
+                                                    book.favorited ? 'text-red-500' : 'text-gray-400'
+                                                }`}>
+                                                    {book.favoriteCount || 0}
+                                                </span>
+                                            </button>
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <div className="flex justify-end gap-2">

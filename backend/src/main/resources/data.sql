@@ -18,4 +18,7 @@ INSERT INTO book_tag (book_id, tag_id) VALUES
 (3, 2),
 (3, 5);
 
-INSERT INTO users (username, password) VALUES ('admin', '123456');
+INSERT INTO users (username, password) VALUES 
+('admin', '123456'),
+('test1', '123456'),
+('test2', '123456');

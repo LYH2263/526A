@@ -2,27 +2,26 @@ package com.example.book.entity;
 
 import lombok.Data;
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-public class Book {
-    private Long id;
+public class FavoriteWithBook {
+    private Long favoriteId;
+    private Long userId;
+    private Long bookId;
+    private LocalDateTime createdAt;
+
     private String title;
     private String author;
     private BigDecimal price;
-    private LocalDate publishDate;
     private String description;
     private Long categoryId;
     private String categoryName;
     private Integer totalStock;
     private Integer availableStock;
-    private Integer version;
-    private java.math.BigDecimal avgRating;
+    private BigDecimal avgRating;
     private Integer reviewCount;
-    private List<Tag> tags;
-    private List<Long> tagIds;
     private Integer favoriteCount;
-    private Boolean favorited;
+    private List<Tag> tags;
 }
-

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.book.mapper.FavoriteMapper">
+
+    <resultMap id="FavoriteResultMap" type="com.example.book.entity.Favorite">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="bookId" column="book_id"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <resultMap id="FavoriteWithBookResultMap" type="com.example.book.entity.FavoriteWithBook">
+        <id property="favoriteId" column="favorite_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="bookId" column="book_id"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="title" column="title"/>
+        <result property="author" column="author"/>
+        <result property="price" column="price"/>
+        <result property="description" column="description"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="totalStock" column="total_stock"/>
+        <result property="availableStock" column="available_stock"/>
+        <result property="avgRating" column="avg_rating"/>
+        <result property="reviewCount" column="review_count"/>
+        <result property="favoriteCount" column="favorite_count"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="false">
+        INSERT IGNORE INTO favorite (user_id, book_id)
+        VALUES (#{userId}, #{bookId})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM favorite WHERE user_id = #{userId} AND book_id = #{bookId}
+    </delete>
+
+    <select id="findByUserAndBook" resultMap="FavoriteResultMap">
+        SELECT id, user_id, book_id, created_at
+        FROM favorite
+        WHERE user_id = #{userId} AND book_id = #{bookId}
+    </select>
+
+    <select id="findByUserId" resultMap="FavoriteWithBookResultMap">
+        SELECT f.id AS favorite_id,
+               f.user_id,
+               f.book_id,
+               f.created_at,
+               b.title,
+               b.author,
+               b.price,
+               b.description,
+               b.category_id,
+               c.name AS category_name,
+               b.total_stock,
+               b.available_stock,
+               b.avg_rating,
+               b.review_count,
+               COALESCE(fc.cnt, 0) AS favorite_count
+        FROM favorite f
+        INNER JOIN book b ON f.book_id = b.id
+        LEFT JOIN category c ON b.category_id = c.id
+        LEFT JOIN (
+            SELECT book_id, COUNT(*) AS cnt FROM favorite GROUP BY book_id
+        ) fc ON b.id = fc.book_id
+        WHERE f.user_id = #{userId}
+        ORDER BY
+            <choose>
+                <when test="sortOrder == null or sortOrder == 'desc'">
+                    f.created_at DESC
+                </when>
+                <otherwise>
+                    f.created_at ASC
+                </otherwise>
+            </choose>
+    </select>
+
+    <select id="countByBookId" resultType="int">
+        SELECT COUNT(*) FROM favorite WHERE book_id = #{bookId}
+    </select>
+
+    <select id="findFavoritedBookIdsByUserId" resultType="java.lang.Long">
+        SELECT book_id FROM favorite WHERE user_id = #{userId}
+    </select>
+
+</mapper>
