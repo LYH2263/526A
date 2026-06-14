@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.book.mapper.BookshelfMapper">
+
+    <resultMap id="BookshelfResultMap" type="com.example.book.entity.Bookshelf">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="positionX" column="position_x"/>
+        <result property="positionY" column="position_y"/>
+        <result property="width" column="width"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="BookshelfResultMap">
+        SELECT id, name, position_x, position_y, width, sort_order, created_at, updated_at
+        FROM bookshelf
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="findById" resultMap="BookshelfResultMap">
+        SELECT id, name, position_x, position_y, width, sort_order, created_at, updated_at
+        FROM bookshelf
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO bookshelf (name, position_x, position_y, width, sort_order)
+        VALUES (#{name}, #{positionX}, #{positionY}, #{width}, #{sortOrder})
+    </insert>
+
+    <update id="update">
+        UPDATE bookshelf
+        SET name = #{name},
+            position_x = #{positionX},
+            position_y = #{positionY},
+            width = #{width},
+            sort_order = #{sortOrder}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM bookshelf WHERE id = #{id}
+    </delete>
+
+</mapper>

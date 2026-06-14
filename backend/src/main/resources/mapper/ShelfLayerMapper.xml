@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.book.mapper.ShelfLayerMapper">
+
+    <resultMap id="ShelfLayerResultMap" type="com.example.book.entity.ShelfLayer">
+        <id property="id" column="id"/>
+        <result property="bookshelfId" column="bookshelf_id"/>
+        <result property="layerIndex" column="layer_index"/>
+        <result property="capacity" column="capacity"/>
+        <result property="height" column="height"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findByBookshelfId" resultMap="ShelfLayerResultMap">
+        SELECT id, bookshelf_id, layer_index, capacity, height, created_at, updated_at
+        FROM shelf_layer
+        WHERE bookshelf_id = #{bookshelfId}
+        ORDER BY layer_index ASC
+    </select>
+
+    <select id="findById" resultMap="ShelfLayerResultMap">
+        SELECT id, bookshelf_id, layer_index, capacity, height, created_at, updated_at
+        FROM shelf_layer
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO shelf_layer (bookshelf_id, layer_index, capacity, height)
+        VALUES (#{bookshelfId}, #{layerIndex}, #{capacity}, #{height})
+    </insert>
+
+    <update id="update">
+        UPDATE shelf_layer
+        SET bookshelf_id = #{bookshelfId},
+            layer_index = #{layerIndex},
+            capacity = #{capacity},
+            height = #{height}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM shelf_layer WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByBookshelfId">
+        DELETE FROM shelf_layer WHERE bookshelf_id = #{bookshelfId}
+    </delete>
+
+    <select id="countByLayerId" resultType="int">
+        SELECT COUNT(*) FROM book_placement WHERE layer_id = #{layerId}
+    </select>
+
+</mapper>

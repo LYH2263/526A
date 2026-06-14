@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.book.mapper.BookPlacementMapper">
+
+    <resultMap id="BookPlacementResultMap" type="com.example.book.entity.BookPlacement">
+        <id property="id" column="id"/>
+        <result property="bookId" column="book_id"/>
+        <result property="bookshelfId" column="bookshelf_id"/>
+        <result property="layerId" column="layer_id"/>
+        <result property="positionIndex" column="position_index"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="BookPlacementResultMap">
+        SELECT id, book_id, bookshelf_id, layer_id, position_index, created_at, updated_at
+        FROM book_placement
+        ORDER BY bookshelf_id, layer_id, position_index
+    </select>
+
+    <select id="findByLayerId" resultMap="BookPlacementResultMap">
+        SELECT id, book_id, bookshelf_id, layer_id, position_index, created_at, updated_at
+        FROM book_placement
+        WHERE layer_id = #{layerId}
+        ORDER BY position_index ASC
+    </select>
+
+    <select id="findByBookshelfId" resultMap="BookPlacementResultMap">
+        SELECT id, book_id, bookshelf_id, layer_id, position_index, created_at, updated_at
+        FROM book_placement
+        WHERE bookshelf_id = #{bookshelfId}
+        ORDER BY layer_id, position_index
+    </select>
+
+    <select id="findByBookId" resultMap="BookPlacementResultMap">
+        SELECT id, book_id, bookshelf_id, layer_id, position_index, created_at, updated_at
+        FROM book_placement
+        WHERE book_id = #{bookId}
+    </select>
+
+    <select id="findById" resultMap="BookPlacementResultMap">
+        SELECT id, book_id, bookshelf_id, layer_id, position_index, created_at, updated_at
+        FROM book_placement
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO book_placement (book_id, bookshelf_id, layer_id, position_index)
+        VALUES (#{bookId}, #{bookshelfId}, #{layerId}, #{positionIndex})
+    </insert>
+
+    <update id="update">
+        UPDATE book_placement
+        SET book_id = #{bookId},
+            bookshelf_id = #{bookshelfId},
+            layer_id = #{layerId},
+            position_index = #{positionIndex}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM book_placement WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByBookId">
+        DELETE FROM book_placement WHERE book_id = #{bookId}
+    </delete>
+
+    <delete id="deleteByLayerId">
+        DELETE FROM book_placement WHERE layer_id = #{layerId}
+    </delete>
+
+    <delete id="deleteByBookshelfId">
+        DELETE FROM book_placement WHERE bookshelf_id = #{bookshelfId}
+    </delete>
+
+    <delete id="deleteAll">
+        DELETE FROM book_placement
+    </delete>
+
+</mapper>

@@ -113,3 +113,50 @@ CREATE TABLE IF NOT EXISTS notification (
     INDEX idx_book_type (book_id, type),
     FOREIGN KEY (book_id) REFERENCES book(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS bookshelf (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL COMMENT '书架名称',
+    position_x INT NOT NULL DEFAULT 0 COMMENT '书架在画布上的X坐标',
+    position_y INT NOT NULL DEFAULT 0 COMMENT '书架在画布上的Y坐标',
+    width INT NOT NULL DEFAULT 400 COMMENT '书架宽度',
+    sort_order INT NOT NULL DEFAULT 0 COMMENT '排序序号',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS shelf_layer (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    bookshelf_id BIGINT NOT NULL COMMENT '所属书架ID',
+    layer_index INT NOT NULL COMMENT '第几层（从0开始）',
+    capacity INT NOT NULL DEFAULT 10 COMMENT '该格层容量上限',
+    height INT NOT NULL DEFAULT 60 COMMENT '格层高度',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_bookshelf_id (bookshelf_id),
+    FOREIGN KEY (bookshelf_id) REFERENCES bookshelf(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS book_placement (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    book_id BIGINT NOT NULL COMMENT '图书ID',
+    bookshelf_id BIGINT NOT NULL COMMENT '书架ID',
+    layer_id BIGINT NOT NULL COMMENT '格层ID',
+    position_index INT NOT NULL COMMENT '在格层中的位置序号',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_book (book_id),
+    INDEX idx_layer (layer_id),
+    INDEX idx_bookshelf (bookshelf_id),
+    FOREIGN KEY (book_id) REFERENCES book(id) ON DELETE CASCADE,
+    FOREIGN KEY (bookshelf_id) REFERENCES bookshelf(id) ON DELETE CASCADE,
+    FOREIGN KEY (layer_id) REFERENCES shelf_layer(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS shelf_layout_version (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    version INT NOT NULL DEFAULT 1 COMMENT '布局版本号',
+    snapshot JSON COMMENT '布局快照（用于冲突检测和回滚）',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

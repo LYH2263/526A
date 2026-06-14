@@ -22,3 +22,19 @@ INSERT INTO users (username, password) VALUES
 ('admin', '123456'),
 ('test1', '123456'),
 ('test2', '123456');
+
+INSERT INTO bookshelf (name, position_x, position_y, width, sort_order) VALUES
+('文学类书架', 50, 50, 450, 0),
+('科技类书架', 550, 50, 450, 1);
+
+INSERT INTO shelf_layer (bookshelf_id, layer_index, capacity, height) VALUES
+(1, 0, 10, 60),
+(1, 1, 10, 60),
+(1, 2, 10, 60),
+(1, 3, 10, 60),
+(1, 4, 10, 60),
+(2, 0, 10, 60),
+(2, 1, 10, 60),
+(2, 2, 10, 60),
+(2, 3, 10, 60),
+(2, 4, 10, 60);
