@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import request from '../api/request';
 import CategoryModal from './CategoryModal';
 
-const CategoryTree = ({ selectedCategory, onSelectCategory, onTreeChange }) => {
+const CategoryTree = ({ selectedCategory, onSelectCategory, refreshSignal }) => {
     const [treeData, setTreeData] = useState([]);
     const [uncategorizedCount, setUncategorizedCount] = useState(0);
     const [expandedKeys, setExpandedKeys] = useState(new Set(['uncategorized']));
@@ -22,13 +22,7 @@ const CategoryTree = ({ selectedCategory, onSelectCategory, onTreeChange }) => {
 
     useEffect(() => {
         fetchCategoryTree();
-    }, []);
-
-    useEffect(() => {
-        if (onTreeChange) {
-            onTreeChange();
-        }
-    }, [treeData, uncategorizedCount]);
+    }, [refreshSignal]);
 
     const toggleExpand = (key) => {
         const newExpanded = new Set(expandedKeys);

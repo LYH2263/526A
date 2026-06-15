@@ -92,10 +92,6 @@ const BookList = ({ user, initialBookId, onNotificationBookCleared }) => {
         setSelectedCategory(category);
     };
 
-    const handleTreeChange = () => {
-        setTreeRefreshKey(prev => prev + 1);
-    };
-
     const handleEdit = (book) => {
         setCurrentBook(book);
         setIsEditOpen(true);
@@ -285,10 +281,9 @@ const BookList = ({ user, initialBookId, onNotificationBookCleared }) => {
         <div className="flex gap-6 h-full">
             <div className="w-72 flex-shrink-0 h-[calc(100vh-8rem)]">
                 <CategoryTree
-                    key={treeRefreshKey}
+                    refreshSignal={treeRefreshKey}
                     selectedCategory={selectedCategory}
                     onSelectCategory={handleCategorySelect}
-                    onTreeChange={handleTreeChange}
                 />
             </div>
 
