@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import request from '../api/request';
 import StarRating from './StarRating';
 import StarRatingInput from './StarRatingInput';
@@ -12,20 +12,29 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
     const [pageSize] = useState(5);
     const [sortBy, setSortBy] = useState('time');
     const [sortOrder, setSortOrder] = useState('desc');
+    const [filterRating, setFilterRating] = useState(null);
+    const [ratingDistribution, setRatingDistribution] = useState({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
     const [myReview, setMyReview] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editRating, setEditRating] = useState(5);
     const [editContent, setEditContent] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [loading, setLoading] = useState(false);
+    const initializedRef = useRef(false);
 
     const fetchReviews = useCallback(async () => {
         if (!book?.id) return;
         setLoading(true);
         try {
-            const data = await request.get(
-                `/books/${book.id}/reviews?page=${page}&size=${pageSize}&sortBy=${sortBy}&sortOrder=${sortOrder}`
-            );
+            const params = new URLSearchParams();
+            params.append('page', page);
+            params.append('size', pageSize);
+            params.append('sortBy', sortBy);
+            params.append('sortOrder', sortOrder);
+            if (filterRating !== null) {
+                params.append('rating', filterRating);
+            }
+            const data = await request.get(`/books/${book.id}/reviews?${params.toString()}`);
             setReviews(data.list || []);
             setTotalReviews(data.total || 0);
         } catch (e) {
@@ -33,7 +42,17 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
         } finally {
             setLoading(false);
         }
-    }, [book?.id, page, pageSize, sortBy, sortOrder]);
+    }, [book?.id, page, pageSize, sortBy, sortOrder, filterRating]);
+
+    const fetchRatingDistribution = useCallback(async () => {
+        if (!book?.id) return;
+        try {
+            const data = await request.get(`/books/${book.id}/reviews/rating-distribution`);
+            setRatingDistribution(data || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+        } catch (e) {
+            console.error(e);
+        }
+    }, [book?.id]);
 
     const fetchMyReview = useCallback(async () => {
         if (!book?.id || !user?.id) return;
@@ -50,19 +69,31 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
     }, [book?.id, user?.id]);
 
     useEffect(() => {
-        if (isOpen && book) {
-            fetchReviews();
-            fetchMyReview();
+        if (isOpen && book && !initializedRef.current) {
+            initializedRef.current = true;
             setPage(1);
+            setFilterRating(null);
             setIsEditing(false);
+            fetchReviews();
+            fetchRatingDistribution();
+            fetchMyReview();
         }
-    }, [isOpen, book, fetchReviews, fetchMyReview]);
+        if (!isOpen) {
+            initializedRef.current = false;
+        }
+    }, [isOpen, book]);
 
     useEffect(() => {
-        if (isOpen && book) {
+        if (isOpen && book && initializedRef.current) {
             fetchReviews();
         }
-    }, [page, sortBy, sortOrder, isOpen, book, fetchReviews]);
+    }, [page, sortBy, sortOrder, filterRating]);
+
+    const refreshAll = useCallback(() => {
+        fetchReviews();
+        fetchRatingDistribution();
+        fetchMyReview();
+    }, [fetchReviews, fetchRatingDistribution, fetchMyReview]);
 
     const handleSubmitReview = async () => {
         if (!editRating || editRating < 1 || editRating > 5) {
@@ -86,8 +117,8 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
                 content: editContent
             });
             setIsEditing(false);
-            fetchReviews();
-            fetchMyReview();
+            setPage(1);
+            refreshAll();
             if (onReviewUpdated) {
                 onReviewUpdated();
             }
@@ -102,8 +133,8 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
         if (!confirm('确定要删除这条评论吗？')) return;
         try {
             await request.delete(`/reviews/${reviewId}?userId=${user.id}`);
-            fetchReviews();
-            fetchMyReview();
+            setPage(1);
+            refreshAll();
             if (onReviewUpdated) {
                 onReviewUpdated();
             }
@@ -131,6 +162,15 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
         }
     };
 
+    const handleFilterRating = (rating) => {
+        if (filterRating === rating) {
+            setFilterRating(null);
+        } else {
+            setFilterRating(rating);
+        }
+        setPage(1);
+    };
+
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
         const date = new Date(dateStr);
@@ -144,6 +184,8 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
     };
 
     const totalPages = Math.ceil(totalReviews / pageSize);
+
+    const totalRatingCount = Object.values(ratingDistribution).reduce((sum, c) => sum + (c || 0), 0);
 
     const handleToggleFavorite = async () => {
         if (!user) {
@@ -326,39 +368,92 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
                     </div>
 
                     <div>
-                        <div className="flex justify-between items-center mb-3">
-                            <h4 className="font-semibold text-gray-800">
-                                全部评论 <span className="text-gray-400 font-normal text-sm">({totalReviews})</span>
-                            </h4>
-                            <div className="flex items-center gap-2">
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => {
-                                        setSortBy(e.target.value);
-                                        setPage(1);
-                                    }}
-                                    className="text-sm px-2 py-1 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                >
-                                    <option value="time">按时间</option>
-                                    <option value="rating">按评分</option>
-                                </select>
-                                <button
-                                    onClick={() => {
-                                        setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
-                                        setPage(1);
-                                    }}
-                                    className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                                    title={sortOrder === 'desc' ? '降序' : '升序'}
-                                >
-                                    <svg
-                                        className={`w-4 h-4 text-gray-500 transition-transform ${sortOrder === 'asc' ? 'rotate-180' : ''}`}
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
+                        <div className="mb-4">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="font-semibold text-gray-800">
+                                    全部评论 <span className="text-gray-400 font-normal text-sm">({totalReviews})</span>
+                                </h4>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => {
+                                            setSortBy(e.target.value);
+                                            setPage(1);
+                                        }}
+                                        className="text-sm px-2 py-1 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                     >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
+                                        <option value="time">按时间</option>
+                                        <option value="rating">按评分</option>
+                                    </select>
+                                    <button
+                                        onClick={() => {
+                                            setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                                            setPage(1);
+                                        }}
+                                        className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                                        title={sortOrder === 'desc' ? '降序' : '升序'}
+                                    >
+                                        <svg
+                                            className={`w-4 h-4 text-gray-500 transition-transform ${sortOrder === 'asc' ? 'rotate-180' : ''}`}
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-4">
+                                <div className="grid grid-cols-5 gap-2">
+                                    {[5, 4, 3, 2, 1].map((star) => {
+                                        const count = ratingDistribution[star] || 0;
+                                        const pct = totalRatingCount > 0 ? (count / totalRatingCount * 100) : 0;
+                                        const isActive = filterRating === star;
+                                        return (
+                                            <button
+                                                key={star}
+                                                onClick={() => handleFilterRating(star)}
+                                                className={`flex flex-col items-center gap-1.5 p-2 rounded-lg transition-all ${
+                                                    isActive
+                                                        ? 'bg-blue-100 border border-blue-300'
+                                                        : 'hover:bg-gray-100 border border-transparent'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-0.5">
+                                                    {Array.from({ length: star }).map((_, i) => (
+                                                        <svg key={i} className="w-3.5 h-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                        </svg>
+                                                    ))}
+                                                </div>
+                                                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-yellow-400 rounded-full transition-all"
+                                                        style={{ width: `${pct}%` }}
+                                                    />
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    {count} <span className="text-gray-400">({pct.toFixed(0)}%)</span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {filterRating !== null && (
+                                    <div className="mt-3 flex items-center justify-between pt-3 border-t border-gray-200">
+                                        <span className="text-xs text-gray-500">
+                                            当前筛选：<span className="text-blue-600 font-medium">{filterRating} 星评论</span>
+                                        </span>
+                                        <button
+                                            onClick={() => handleFilterRating(filterRating)}
+                                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                        >
+                                            清除筛选
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -369,7 +464,9 @@ const BookDetailModal = ({ isOpen, onClose, book, user, onReviewUpdated }) => {
                                 <svg className="w-12 h-12 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
-                                <p className="text-gray-400 text-sm">暂无评论，快来抢沙发吧~</p>
+                                <p className="text-gray-400 text-sm">
+                                    {filterRating !== null ? '该星级下暂无评论' : '暂无评论，快来抢沙发吧~'}
+                                </p>
                             </div>
                         ) : (
                             <div className="space-y-4">

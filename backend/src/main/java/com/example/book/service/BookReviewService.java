@@ -11,7 +11,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class BookReviewService {
@@ -27,11 +30,25 @@ public class BookReviewService {
     @Autowired
     private UserMapper userMapper;
 
-    public PageResult<BookReview> getReviewsByBookId(Long bookId, int page, int size, String sortBy, String sortOrder) {
+    public PageResult<BookReview> getReviewsByBookId(Long bookId, Integer rating, int page, int size, String sortBy, String sortOrder) {
         int offset = (page - 1) * size;
-        List<BookReview> reviews = bookReviewMapper.findByBookId(bookId, sortBy, sortOrder, offset, size);
-        long total = bookReviewMapper.countByBookId(bookId);
+        List<BookReview> reviews = bookReviewMapper.findByBookId(bookId, rating, sortBy, sortOrder, offset, size);
+        long total = bookReviewMapper.countByBookId(bookId, rating);
         return new PageResult<>(reviews, total, page, size);
+    }
+
+    public Map<Integer, Long> getRatingDistribution(Long bookId) {
+        List<Map<String, Object>> rawList = bookReviewMapper.countByRating(bookId);
+        Map<Integer, Long> result = new HashMap<>();
+        for (int i = 1; i <= 5; i++) {
+            result.put(i, 0L);
+        }
+        for (Map<String, Object> row : rawList) {
+            Integer rating = ((Number) row.get("rating")).intValue();
+            Long count = ((Number) row.get("count")).longValue();
+            result.put(rating, count);
+        }
+        return result;
     }
 
     public BookReview getMyReview(Long bookId, Long userId) {

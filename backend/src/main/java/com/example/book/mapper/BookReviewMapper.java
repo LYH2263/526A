@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface BookReviewMapper {
@@ -14,13 +15,16 @@ public interface BookReviewMapper {
 
     List<BookReview> findByBookId(
             @Param("bookId") Long bookId,
+            @Param("rating") Integer rating,
             @Param("sortBy") String sortBy,
             @Param("sortOrder") String sortOrder,
             @Param("offset") int offset,
             @Param("size") int size
     );
 
-    long countByBookId(@Param("bookId") Long bookId);
+    long countByBookId(@Param("bookId") Long bookId, @Param("rating") Integer rating);
+
+    List<Map<String, Object>> countByRating(@Param("bookId") Long bookId);
 
     int insert(BookReview review);
 

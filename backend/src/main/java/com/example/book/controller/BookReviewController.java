@@ -7,6 +7,8 @@ import com.example.book.service.BookReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api")
 public class BookReviewController {
@@ -17,12 +19,19 @@ public class BookReviewController {
     @GetMapping("/books/{bookId}/reviews")
     public Result<PageResult<BookReview>> getReviews(
             @PathVariable Long bookId,
+            @RequestParam(required = false) Integer rating,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "time") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder) {
-        PageResult<BookReview> result = bookReviewService.getReviewsByBookId(bookId, page, size, sortBy, sortOrder);
+        PageResult<BookReview> result = bookReviewService.getReviewsByBookId(bookId, rating, page, size, sortBy, sortOrder);
         return Result.success(result);
+    }
+
+    @GetMapping("/books/{bookId}/reviews/rating-distribution")
+    public Result<Map<Integer, Long>> getRatingDistribution(@PathVariable Long bookId) {
+        Map<Integer, Long> distribution = bookReviewService.getRatingDistribution(bookId);
+        return Result.success(distribution);
     }
 
     @GetMapping("/books/{bookId}/reviews/my")

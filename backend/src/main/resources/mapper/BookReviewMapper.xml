@@ -29,6 +29,9 @@
         SELECT id, book_id, user_id, username, rating, content, created_at, updated_at
         FROM book_review
         WHERE book_id = #{bookId}
+        <if test="rating != null">
+            AND rating = #{rating}
+        </if>
         ORDER BY
         <choose>
             <when test="sortBy == 'rating' and sortOrder == 'asc'">rating ASC, created_at DESC</when>
@@ -41,6 +44,17 @@
 
     <select id="countByBookId" resultType="long">
         SELECT COUNT(*) FROM book_review WHERE book_id = #{bookId}
+        <if test="rating != null">
+            AND rating = #{rating}
+        </if>
+    </select>
+
+    <select id="countByRating" resultType="java.util.Map">
+        SELECT rating AS rating, COUNT(*) AS count
+        FROM book_review
+        WHERE book_id = #{bookId}
+        GROUP BY rating
+        ORDER BY rating DESC
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
