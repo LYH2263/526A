@@ -2,6 +2,7 @@ package com.example.book.controller;
 
 import com.example.book.common.Result;
 import com.example.book.entity.DuplicateGroup;
+import com.example.book.entity.MergePreview;
 import com.example.book.entity.MergeResult;
 import com.example.book.service.DuplicateDetectionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,16 @@ public class DuplicateDetectionController {
         }
         List<DuplicateGroup> groups = duplicateDetectionService.detectDuplicates(threshold);
         return Result.success(groups);
+    }
+
+    @PostMapping("/merge/preview")
+    public Result<MergePreview> previewMerge(@RequestBody MergeResult.MergeRequest request) {
+        try {
+            MergePreview preview = duplicateDetectionService.previewMerge(request);
+            return Result.success(preview);
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        }
     }
 
     @PostMapping("/merge")

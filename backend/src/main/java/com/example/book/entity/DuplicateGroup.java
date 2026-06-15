@@ -10,6 +10,7 @@ public class DuplicateGroup {
     private Long groupId;
     private List<BookDuplicateItem> books;
     private Double maxSimilarity;
+    private Double minSimilarity;
 
     @Data
     public static class BookDuplicateItem {

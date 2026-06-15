@@ -111,4 +111,8 @@
         DELETE FROM book_tag WHERE book_id = #{fromBookId}
     </delete>
 
+    <select id="countTagsByBookId" resultType="int">
+        SELECT COUNT(*) FROM book_tag WHERE book_id = #{bookId}
+    </select>
+
 </mapper>

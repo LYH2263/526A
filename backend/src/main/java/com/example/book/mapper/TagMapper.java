@@ -24,4 +24,6 @@ public interface TagMapper {
     List<Long> findBookIdsByTagIdsOr(@Param("tagIds") List<Long> tagIds);
 
     int migrateBookTags(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId);
+
+    int countTagsByBookId(@Param("bookId") Long bookId);
 }

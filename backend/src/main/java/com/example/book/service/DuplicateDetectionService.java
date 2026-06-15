@@ -2,6 +2,7 @@ package com.example.book.service;
 
 import com.example.book.entity.Book;
 import com.example.book.entity.DuplicateGroup;
+import com.example.book.entity.MergePreview;
 import com.example.book.entity.MergeResult;
 import com.example.book.mapper.*;
 import com.example.book.util.BookSimilarityUtil;
@@ -44,6 +45,7 @@ public class DuplicateDetectionService {
         int n = allBooks.size();
         double[][] simMatrix = new double[n][n];
         for (int i = 0; i < n; i++) {
+            simMatrix[i][i] = 1.0;
             for (int j = i + 1; j < n; j++) {
                 double sim = BookSimilarityUtil.computeBookSimilarity(
                         allBooks.get(i).getTitle(), allBooks.get(i).getAuthor(),
@@ -54,29 +56,44 @@ public class DuplicateDetectionService {
             }
         }
 
-        UnionFind uf = new UnionFind(n);
+        boolean[] assigned = new boolean[n];
+        List<List<Integer>> rawGroups = new ArrayList<>();
+
         for (int i = 0; i < n; i++) {
+            if (assigned[i]) continue;
+
+            List<Integer> group = new ArrayList<>();
+            group.add(i);
+            assigned[i] = true;
+
             for (int j = i + 1; j < n; j++) {
-                if (simMatrix[i][j] >= threshold) {
-                    uf.union(i, j);
+                if (assigned[j]) continue;
+
+                boolean allAboveThreshold = true;
+                for (int member : group) {
+                    if (simMatrix[member][j] < threshold) {
+                        allAboveThreshold = false;
+                        break;
+                    }
+                }
+
+                if (allAboveThreshold) {
+                    group.add(j);
+                    assigned[j] = true;
                 }
             }
-        }
 
-        Map<Integer, List<Integer>> groupMap = new HashMap<>();
-        for (int i = 0; i < n; i++) {
-            int root = uf.find(i);
-            groupMap.computeIfAbsent(root, k -> new ArrayList<>()).add(i);
+            if (group.size() >= 2) {
+                rawGroups.add(group);
+            }
         }
 
         List<DuplicateGroup> groups = new ArrayList<>();
         long groupId = 1;
-        for (List<Integer> indices : groupMap.values()) {
-            if (indices.size() < 2) continue;
-
+        for (List<Integer> indices : rawGroups) {
             int refIdx = indices.get(0);
             List<DuplicateGroup.BookDuplicateItem> items = new ArrayList<>();
-            double maxSim = 0;
+            double minSim = 1.0;
 
             for (int idx : indices) {
                 Book b = allBooks.get(idx);
@@ -95,22 +112,111 @@ public class DuplicateDetectionService {
                 if (idx != refIdx) {
                     double sim = simMatrix[refIdx][idx];
                     item.setSimilarityToRef(Math.round(sim * 10000.0) / 10000.0);
-                    maxSim = Math.max(maxSim, sim);
                 } else {
                     item.setSimilarityToRef(1.0);
                 }
                 items.add(item);
             }
 
+            for (int a = 0; a < indices.size(); a++) {
+                for (int b = a + 1; b < indices.size(); b++) {
+                    minSim = Math.min(minSim, simMatrix[indices.get(a)][indices.get(b)]);
+                }
+            }
+
             DuplicateGroup group = new DuplicateGroup();
             group.setGroupId(groupId++);
             group.setBooks(items);
-            group.setMaxSimilarity(Math.round(maxSim * 10000.0) / 10000.0);
+            group.setMinSimilarity(Math.round(minSim * 10000.0) / 10000.0);
+            group.setMaxSimilarity(calculateMaxSim(indices, simMatrix));
             groups.add(group);
         }
 
-        groups.sort((a, b) -> Double.compare(b.getMaxSimilarity(), a.getMaxSimilarity()));
+        groups.sort((a, b) -> Double.compare(b.getMinSimilarity(), a.getMinSimilarity()));
         return groups;
+    }
+
+    private double calculateMaxSim(List<Integer> indices, double[][] simMatrix) {
+        double max = 0;
+        for (int a = 0; a < indices.size(); a++) {
+            for (int b = a + 1; b < indices.size(); b++) {
+                max = Math.max(max, simMatrix[indices.get(a)][indices.get(b)]);
+            }
+        }
+        return Math.round(max * 10000.0) / 10000.0;
+    }
+
+    public MergePreview previewMerge(MergeResult.MergeRequest request) {
+        Long primaryId = request.getPrimaryBookId();
+        List<Long> duplicateIds = request.getDuplicateBookIds();
+
+        if (primaryId == null || duplicateIds == null || duplicateIds.isEmpty()) {
+            throw new IllegalArgumentException("主记录ID和重复合并列表不能为空");
+        }
+        if (duplicateIds.contains(primaryId)) {
+            throw new IllegalArgumentException("重复合并列表不能包含主记录ID");
+        }
+
+        Book primaryBook = bookMapper.findById(primaryId);
+        if (primaryBook == null) {
+            throw new IllegalArgumentException("主记录不存在");
+        }
+
+        MergePreview preview = new MergePreview();
+        DuplicateGroup.BookDuplicateItem primaryItem = new DuplicateGroup.BookDuplicateItem();
+        primaryItem.setId(primaryBook.getId());
+        primaryItem.setTitle(primaryBook.getTitle());
+        primaryItem.setAuthor(primaryBook.getAuthor());
+        primaryItem.setPrice(primaryBook.getPrice());
+        primaryItem.setPublishDate(primaryBook.getPublishDate());
+        primaryItem.setDescription(primaryBook.getDescription());
+        primaryItem.setCategoryId(primaryBook.getCategoryId());
+        primaryItem.setCategoryName(primaryBook.getCategoryName());
+        primaryItem.setTotalStock(primaryBook.getTotalStock());
+        primaryItem.setAvailableStock(primaryBook.getAvailableStock());
+        preview.setPrimaryBook(primaryItem);
+
+        int totalFavorites = 0;
+        int totalBorrowRecords = 0;
+        int totalReviews = 0;
+        int totalBookTags = 0;
+        int totalPlacements = 0;
+        int totalNotifications = 0;
+        int deletedFavorites = 0;
+        int deletedReviews = 0;
+
+        for (Long dupId : duplicateIds) {
+            Book dupBook = bookMapper.findById(dupId);
+            if (dupBook == null) {
+                throw new IllegalArgumentException("重复记录ID=" + dupId + "不存在");
+            }
+
+            int dupFavCount = favoriteMapper.countByBookId(dupId);
+            int dupReviewCount = bookReviewMapper.countReviews(dupId);
+            int dupBorrowCount = borrowRecordMapper.countByBookId(dupId);
+            int dupPlacementCount = bookPlacementMapper.countByBookId(dupId);
+            int dupTagCount = tagMapper.countTagsByBookId(dupId);
+            int dupNotifCount = notificationMapper.countByBookId(dupId);
+
+            totalFavorites += dupFavCount;
+            totalBorrowRecords += dupBorrowCount;
+            totalReviews += dupReviewCount;
+            totalBookTags += dupTagCount;
+            totalPlacements += dupPlacementCount;
+            totalNotifications += dupNotifCount;
+        }
+
+        preview.setTotalFavorites(totalFavorites);
+        preview.setTotalBorrowRecords(totalBorrowRecords);
+        preview.setTotalReviews(totalReviews);
+        preview.setTotalBookTags(totalBookTags);
+        preview.setTotalPlacements(totalPlacements);
+        preview.setTotalNotifications(totalNotifications);
+        preview.setDeletedFavorites(deletedFavorites);
+        preview.setDeletedReviews(deletedReviews);
+        preview.setMergedCount(duplicateIds.size());
+
+        return preview;
     }
 
     @Transactional
@@ -150,15 +256,19 @@ public class DuplicateDetectionService {
             Book dupBook = bookMapper.findById(dupId);
 
             favoriteMapper.deleteConflictingBeforeMigrate(dupId, primaryId);
-            totalFavorites += favoriteMapper.migrateFavorites(dupId, primaryId);
+            int migratedFav = favoriteMapper.migrateFavorites(dupId, primaryId);
+            totalFavorites += migratedFav;
 
-            totalBorrowRecords += borrowRecordMapper.migrateBorrowRecords(dupId, primaryId, primaryBook.getTitle());
+            int migratedBorrow = borrowRecordMapper.migrateBorrowRecords(dupId, primaryId, primaryBook.getTitle());
+            totalBorrowRecords += migratedBorrow;
 
             bookReviewMapper.deleteConflictingReviewsBeforeMigrate(dupId, primaryId);
-            totalReviews += bookReviewMapper.migrateReviews(dupId, primaryId);
+            int migratedReview = bookReviewMapper.migrateReviews(dupId, primaryId);
+            totalReviews += migratedReview;
 
             tagMapper.migrateBookTags(dupId, primaryId);
             tagMapper.deleteBookTagsByBookId(dupId);
+            totalBookTags = -1;
 
             totalPlacements += bookPlacementMapper.countByBookId(dupId);
             bookPlacementMapper.deleteByBookId(dupId);
@@ -176,40 +286,5 @@ public class DuplicateDetectionService {
         result.setMigratedBookTags(totalBookTags);
         result.setMigratedPlacements(totalPlacements);
         return result;
-    }
-
-    private static class UnionFind {
-        private final int[] parent;
-        private final int[] rank;
-
-        UnionFind(int n) {
-            parent = new int[n];
-            rank = new int[n];
-            for (int i = 0; i < n; i++) {
-                parent[i] = i;
-                rank[i] = 0;
-            }
-        }
-
-        int find(int x) {
-            if (parent[x] != x) {
-                parent[x] = find(parent[x]);
-            }
-            return parent[x];
-        }
-
-        void union(int x, int y) {
-            int rx = find(x);
-            int ry = find(y);
-            if (rx == ry) return;
-            if (rank[rx] < rank[ry]) {
-                parent[rx] = ry;
-            } else if (rank[rx] > rank[ry]) {
-                parent[ry] = rx;
-            } else {
-                parent[ry] = rx;
-                rank[rx]++;
-            }
-        }
     }
 }
