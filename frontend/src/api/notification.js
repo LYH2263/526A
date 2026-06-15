@@ -16,6 +16,14 @@ export const markAllNotificationsAsRead = () => {
     return request.put('/notifications/read-all');
 };
 
+export const deleteNotification = (id) => {
+    return request.delete(`/notifications/${id}`);
+};
+
+export const clearReadNotifications = () => {
+    return request.delete('/notifications/clear-read');
+};
+
 export const adjustBookStock = (bookId, delta) => {
     return request.put(`/books/${bookId}/stock?delta=${delta}`);
 };

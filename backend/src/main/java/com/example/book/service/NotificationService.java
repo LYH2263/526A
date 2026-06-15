@@ -51,7 +51,7 @@ public class NotificationService {
         Notification notification = new Notification();
         notification.setType(TYPE_LOW_STOCK);
         notification.setTitle("库存预警通知");
-        notification.setContent("《" + bookTitle + "》当前库存为 " + currentStock + "，已低于预警阈值 " + threshold + "，请及时补货。");
+        notification.setContent("《" + bookTitle + "》当前库存为 " + currentStock + "，低于预警阈值 " + threshold + "，请及时补货。");
         notification.setBookId(bookId);
         notification.setBookTitle(bookTitle);
         notification.setStockSnapshot(currentStock);
@@ -61,7 +61,7 @@ public class NotificationService {
 
     @Transactional
     public void reEvaluateStockWarning(Long bookId, String bookTitle, int currentStock, int threshold) {
-        if (threshold > 0 && currentStock <= threshold) {
+        if (threshold > 0 && currentStock < threshold) {
             createLowStockNotification(bookId, bookTitle, currentStock, threshold);
         } else {
             Notification existing = notificationMapper.findUnreadByBookIdAndType(bookId, TYPE_LOW_STOCK);
@@ -69,5 +69,15 @@ public class NotificationService {
                 notificationMapper.markAsRead(existing.getId());
             }
         }
+    }
+
+    @Transactional
+    public void deleteById(Long id) {
+        notificationMapper.deleteById(id);
+    }
+
+    @Transactional
+    public void deleteAllRead() {
+        notificationMapper.deleteAllRead();
     }
 }

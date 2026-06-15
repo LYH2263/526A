@@ -68,6 +68,14 @@
         ORDER BY created_at DESC
     </select>
 
+    <delete id="deleteById">
+        DELETE FROM notification WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteAllRead">
+        DELETE FROM notification WHERE is_read = 1
+    </delete>
+
     <update id="migrateNotifications">
         UPDATE notification
         SET book_id = #{toBookId}, book_title = #{toBookTitle}

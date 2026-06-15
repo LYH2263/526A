@@ -28,6 +28,10 @@ public interface NotificationMapper {
 
     List<Notification> findByBookIdAndType(@Param("bookId") Long bookId, @Param("type") String type);
 
+    int deleteById(@Param("id") Long id);
+
+    int deleteAllRead();
+
     int migrateNotifications(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId, @Param("toBookTitle") String toBookTitle);
 
     int countByBookId(@Param("bookId") Long bookId);

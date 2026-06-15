@@ -39,4 +39,16 @@ public class NotificationController {
         notificationService.markAllAsRead();
         return Result.success(null);
     }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        notificationService.deleteById(id);
+        return Result.success(null);
+    }
+
+    @DeleteMapping("/clear-read")
+    public Result<Void> clearRead() {
+        notificationService.deleteAllRead();
+        return Result.success(null);
+    }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getNotifications, getUnreadCount, markNotificationAsRead, markAllNotificationsAsRead } from '../api/notification';
+import { getNotifications, getUnreadCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearReadNotifications } from '../api/notification';
 
 const NotificationDropdown = ({ onNavigateToBook }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -106,6 +106,34 @@ const NotificationDropdown = ({ onNavigateToBook }) => {
         }
     };
 
+    const handleDelete = async (id, e) => {
+        e.stopPropagation();
+        try {
+            const target = notifications.find(n => n.id === id);
+            const wasUnread = target && !target.isRead;
+            await deleteNotification(id);
+            setNotifications(prev => prev.filter(n => n.id !== id));
+            setTotal(prev => Math.max(0, prev - 1));
+            if (wasUnread) {
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleClearRead = async (e) => {
+        e.stopPropagation();
+        try {
+            await clearReadNotifications();
+            setNotifications(prev => prev.filter(n => !n.isRead));
+            setTotal(prev => prev - (notifications.filter(n => n.isRead).length));
+            fetchNotifications(1);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     const handleLoadMore = () => {
         if (!loading && notifications.length < total) {
             fetchNotifications(page + 1);
@@ -162,14 +190,25 @@ const NotificationDropdown = ({ onNavigateToBook }) => {
                 <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                         <h3 className="font-bold text-gray-800">通知中心</h3>
-                        {unreadCount > 0 && (
-                            <button
-                                onClick={handleMarkAllAsRead}
-                                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                            >
-                                全部已读
-                            </button>
-                        )}
+                        <div className="flex items-center gap-3">
+                            {notifications.some(n => n.isRead) && (
+                                <button
+                                    onClick={handleClearRead}
+                                    className="text-xs text-gray-500 hover:text-red-600 font-medium"
+                                    title="清空已读通知"
+                                >
+                                    清空已读
+                                </button>
+                            )}
+                            {unreadCount > 0 && (
+                                <button
+                                    onClick={handleMarkAllAsRead}
+                                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                    全部已读
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="max-h-96 overflow-y-auto">
@@ -234,14 +273,25 @@ const NotificationDropdown = ({ onNavigateToBook }) => {
                                                     <span className="text-[10px] text-gray-400">
                                                         {formatTime(notification.createdAt)}
                                                     </span>
-                                                    {!notification.isRead && (
+                                                    <div className="flex items-center gap-2">
+                                                        {!notification.isRead && (
+                                                            <button
+                                                                onClick={(e) => handleMarkAsRead(notification.id, e)}
+                                                                className="text-[10px] text-blue-600 hover:text-blue-700 font-medium"
+                                                            >
+                                                                标为已读
+                                                            </button>
+                                                        )}
                                                         <button
-                                                            onClick={(e) => handleMarkAsRead(notification.id, e)}
-                                                            className="text-[10px] text-blue-600 hover:text-blue-700 font-medium"
+                                                            onClick={(e) => handleDelete(notification.id, e)}
+                                                            className="text-[10px] text-gray-400 hover:text-red-600 font-medium transition-colors"
+                                                            title="删除通知"
                                                         >
-                                                            标为已读
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
                                                         </button>
-                                                    )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
