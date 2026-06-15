@@ -115,7 +115,7 @@ public class TagService {
             return List.of();
         }
         if ("AND".equalsIgnoreCase(semantic)) {
-            return tagMapper.findBookIdsByTagIdsAnd(tagIds);
+            return tagMapper.findBookIdsByTagIdsAnd(tagIds, tagIds.size());
         }
         return tagMapper.findBookIdsByTagIdsOr(tagIds);
     }

@@ -84,7 +84,7 @@
             #{tagId}
         </foreach>
         GROUP BY bt.book_id
-        HAVING COUNT(DISTINCT bt.tag_id) = #{tagIds.size()}
+        HAVING COUNT(DISTINCT bt.tag_id) = #{tagCount}
     </select>
 
     <select id="findBookIdsByTagIdsOr" resultType="long">

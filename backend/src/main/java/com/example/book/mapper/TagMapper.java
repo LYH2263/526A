@@ -20,7 +20,7 @@ public interface TagMapper {
     int deleteBookTag(@Param("bookId") Long bookId, @Param("tagId") Long tagId);
     int deleteBookTagsByBookId(@Param("bookId") Long bookId);
     int deleteBookTagsByTagId(@Param("tagId") Long tagId);
-    List<Long> findBookIdsByTagIdsAnd(@Param("tagIds") List<Long> tagIds);
+    List<Long> findBookIdsByTagIdsAnd(@Param("tagIds") List<Long> tagIds, @Param("tagCount") int tagCount);
     List<Long> findBookIdsByTagIdsOr(@Param("tagIds") List<Long> tagIds);
 
     int migrateBookTags(@Param("fromBookId") Long fromBookId, @Param("toBookId") Long toBookId);

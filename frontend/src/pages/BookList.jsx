@@ -337,6 +337,7 @@ const BookList = ({ user, initialBookId, onNotificationBookCleared }) => {
                     onTagsChange={setSelectedTagIds}
                     semantic={tagSemantic}
                     onSemanticChange={setTagSemantic}
+                    onTagsManaged={fetchBooks}
                 />
 
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
