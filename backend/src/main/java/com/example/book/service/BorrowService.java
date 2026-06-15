@@ -39,9 +39,9 @@ public class BorrowService {
             throw new RuntimeException("库存不足，无法借阅");
         }
 
-        int affected = bookMapper.decreaseStock(bookId, book.getVersion());
+        int affected = bookMapper.decreaseStock(bookId);
         if (affected == 0) {
-            throw new RuntimeException("借阅失败，请稍后重试");
+            throw new RuntimeException("库存不足，无法借阅");
         }
 
         BorrowRecord record = new BorrowRecord();

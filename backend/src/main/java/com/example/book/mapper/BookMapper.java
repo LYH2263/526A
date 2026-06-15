@@ -16,7 +16,7 @@ public interface BookMapper {
     int update(Book book);
     int deleteById(@Param("id") Long id);
 
-    int decreaseStock(@Param("id") Long id, @Param("version") Integer version);
+    int decreaseStock(@Param("id") Long id);
 
     int increaseStock(@Param("id") Long id);
 
