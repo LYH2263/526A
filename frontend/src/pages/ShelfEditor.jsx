@@ -5,6 +5,7 @@ import {
     saveLayout,
     getUnplacedBooks,
     createBookshelf,
+    updateBookshelf,
     placeBook,
     removeBookFromShelf,
     batchMoveBooks,
@@ -36,6 +37,8 @@ const ShelfEditor = () => {
     const [selectStart, setSelectStart] = useState(null);
     const [isDirty, setIsDirty] = useState(false);
     const [message, setMessage] = useState(null);
+    const [shelfDrag, setShelfDrag] = useState(null);
+    const [hoveredShelfId, setHoveredShelfId] = useState(null);
 
     const showMessage = (msg, type = 'info') => {
         setMessage({ text: msg, type });
@@ -138,6 +141,25 @@ const ShelfEditor = () => {
         return null;
     };
 
+    const hitTestShelfHeader = (worldX, worldY) => {
+        if (!layout?.bookshelves) return null;
+        for (const shelf of layout.bookshelves) {
+            const headerX = shelf.positionX;
+            const headerY = shelf.positionY;
+            const headerWidth = shelf.width;
+            const headerHeight = SHELF_HEADER_HEIGHT;
+            if (worldX >= headerX && worldX <= headerX + headerWidth &&
+                worldY >= headerY && worldY <= headerY + headerHeight) {
+                return {
+                    shelf,
+                    offsetX: worldX - shelf.positionX,
+                    offsetY: worldY - shelf.positionY
+                };
+            }
+        }
+        return null;
+    };
+
     const getMaxBooksInLayer = (layer) => {
         return layer.capacity || 10;
     };
@@ -149,8 +171,22 @@ const ShelfEditor = () => {
             return;
         }
 
-        if (e.button === 0 && !dragState) {
+        if (e.button === 0 && !dragState && !shelfDrag) {
             const world = screenToWorld(e.clientX, e.clientY);
+            const hitShelfHeader = hitTestShelfHeader(world.x, world.y);
+
+            if (hitShelfHeader && !e.shiftKey) {
+                setShelfDrag({
+                    shelfId: hitShelfHeader.shelf.id,
+                    offsetX: hitShelfHeader.offsetX,
+                    offsetY: hitShelfHeader.offsetY,
+                    currentX: world.x,
+                    currentY: world.y
+                });
+                setSelectedBookIds(new Set());
+                return;
+            }
+
             const hitBook = hitTestBook(world.x, world.y);
 
             if (hitBook) {
@@ -201,6 +237,25 @@ const ShelfEditor = () => {
             return;
         }
 
+        if (shelfDrag) {
+            const newX = world.x - shelfDrag.offsetX;
+            const newY = world.y - shelfDrag.offsetY;
+            setShelfDrag(prev => ({ ...prev, currentX: newX, currentY: newY }));
+            setLayout(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    bookshelves: prev.bookshelves.map(s => {
+                        if (s.id === shelfDrag.shelfId) {
+                            return { ...s, positionX: newX, positionY: newY };
+                        }
+                        return s;
+                    })
+                };
+            });
+            return;
+        }
+
         if (dragState) {
             setDragState(prev => ({
                 ...prev,
@@ -211,18 +266,45 @@ const ShelfEditor = () => {
             const hit = hitTestLayer(world.x, world.y);
             if (hit) {
                 setHoverLayer(hit.layer.id);
+                const targetLayerId = hit.layer.id;
+                const sourceLayerId = dragState.sourceLayerId;
                 const booksCount = dragState.bookIds.length;
-                checkCapacity(hit.layer.id, booksCount).then(cap => {
-                    if (!cap.valid) {
-                        setWarningLayers(prev => new Set([...prev, hit.layer.id]));
-                    } else {
-                        setWarningLayers(prev => {
-                            const next = new Set(prev);
-                            next.delete(hit.layer.id);
-                            return next;
-                        });
+
+                let booksInTarget = 0;
+                if (sourceLayerId && targetLayerId === sourceLayerId) {
+                    if (layout?.bookshelves) {
+                        for (const shelf of layout.bookshelves) {
+                            for (const layer of (shelf.layers || [])) {
+                                if (layer.id === targetLayerId) {
+                                    booksInTarget = (layer.placements || []).filter(p =>
+                                        dragState.bookIds.includes(p.bookId)
+                                    ).length;
+                                }
+                            }
+                        }
                     }
-                });
+                }
+                const netAddCount = booksCount - booksInTarget;
+
+                if (netAddCount <= 0) {
+                    setWarningLayers(prev => {
+                        const next = new Set(prev);
+                        next.delete(targetLayerId);
+                        return next;
+                    });
+                } else {
+                    checkCapacity(targetLayerId, netAddCount).then(cap => {
+                        if (!cap.valid) {
+                            setWarningLayers(prev => new Set([...prev, targetLayerId]));
+                        } else {
+                            setWarningLayers(prev => {
+                                const next = new Set(prev);
+                                next.delete(targetLayerId);
+                                return next;
+                            });
+                        }
+                    });
+                }
             } else {
                 setHoverLayer(null);
                 setWarningLayers(new Set());
@@ -239,6 +321,9 @@ const ShelfEditor = () => {
             });
         }
 
+        const hoverShelfHeader = hitTestShelfHeader(world.x, world.y);
+        setHoveredShelfId(hoverShelfHeader ? hoverShelfHeader.shelf.id : null);
+
         const hover = hitTestLayer(world.x, world.y);
         setHoverLayer(hover ? hover.layer.id : null);
     };
@@ -246,6 +331,20 @@ const ShelfEditor = () => {
     const handleCanvasMouseUp = async (e) => {
         if (isPanning) {
             setIsPanning(false);
+            return;
+        }
+
+        if (shelfDrag) {
+            try {
+                const targetShelf = layout?.bookshelves?.find(s => s.id === shelfDrag.shelfId);
+                if (targetShelf) {
+                    await updateBookshelf(targetShelf);
+                    setIsDirty(true);
+                }
+            } catch (err) {
+                showMessage('更新书架位置失败', 'error');
+            }
+            setShelfDrag(null);
             return;
         }
 
@@ -378,16 +477,57 @@ const ShelfEditor = () => {
     const handleAddShelf = async () => {
         const name = prompt('请输入书架名称：', '新书架');
         if (!name) return;
+
+        const existingShelves = layout?.bookshelves || [];
+        const shelfWidth = 400;
+        const shelfHeightApprox = 380;
+        const gap = 60;
+
+        let newX = 50;
+        let newY = 50;
+        let found = false;
+
+        for (let row = 0; row < 10 && !found; row++) {
+            for (let col = 0; col < 10 && !found; col++) {
+                const candidateX = 50 + col * (shelfWidth + gap);
+                const candidateY = 50 + row * (shelfHeightApprox + gap);
+
+                let overlaps = false;
+                for (const shelf of existingShelves) {
+                    const sWidth = shelf.width || 400;
+                    const sHeight = shelfHeightApprox;
+                    if (candidateX < shelf.positionX + sWidth + gap &&
+                        candidateX + shelfWidth + gap > shelf.positionX &&
+                        candidateY < shelf.positionY + sHeight + gap &&
+                        candidateY + shelfHeightApprox + gap > shelf.positionY) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+
+                if (!overlaps) {
+                    newX = candidateX;
+                    newY = candidateY;
+                    found = true;
+                }
+            }
+        }
+
+        if (!found) {
+            newX = 50 + existingShelves.length * 30;
+            newY = 50 + existingShelves.length * 30;
+        }
+
         try {
             await createBookshelf({
                 name,
-                positionX: 50 + Math.random() * 200,
-                positionY: 50 + Math.random() * 100,
-                width: 400,
-                sortOrder: layout?.bookshelves?.length || 0
+                positionX: newX,
+                positionY: newY,
+                width: shelfWidth,
+                sortOrder: existingShelves.length
             });
             setIsDirty(true);
-            showMessage('书架创建成功', 'success');
+            showMessage('书架创建成功（可拖动标题栏移动位置）', 'success');
             await fetchData();
         } catch (err) {
             showMessage('创建书架失败', 'error');
@@ -466,16 +606,47 @@ const ShelfEditor = () => {
         if (layout?.bookshelves) {
             for (const shelf of layout.bookshelves) {
                 const shelfBounds = getShelfBounds(shelf);
+                const isDraggingShelf = shelfDrag?.shelfId === shelf.id;
+                const isHeaderHovered = hoveredShelfId === shelf.id;
+
+                if (isDraggingShelf) {
+                    ctx.globalAlpha = 0.85;
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                    ctx.shadowBlur = 15 / scale;
+                    ctx.shadowOffsetX = 5 / scale;
+                    ctx.shadowOffsetY = 5 / scale;
+                }
 
                 ctx.fillStyle = '#78350f';
                 ctx.fillRect(shelfBounds.x, shelfBounds.y, shelfBounds.width, shelfBounds.height);
 
-                ctx.fillStyle = '#92400e';
+                if (isHeaderHovered && !isDraggingShelf) {
+                    ctx.fillStyle = '#b45309';
+                } else {
+                    ctx.fillStyle = '#92400e';
+                }
                 ctx.fillRect(shelfBounds.x, shelfBounds.y, shelfBounds.width, SHELF_HEADER_HEIGHT);
+
                 ctx.fillStyle = '#fef3c7';
                 ctx.font = 'bold 14px sans-serif';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(shelf.name, shelfBounds.x + 15, shelfBounds.y + SHELF_HEADER_HEIGHT / 2);
+
+                if (isHeaderHovered || isDraggingShelf) {
+                    ctx.fillStyle = 'rgba(254, 243, 199, 0.7)';
+                    ctx.font = '10px sans-serif';
+                    ctx.textAlign = 'right';
+                    const handleText = isDraggingShelf ? '拖动中...' : '↔ 拖动移动';
+                    ctx.fillText(handleText, shelfBounds.x + shelfBounds.width - 10, shelfBounds.y + SHELF_HEADER_HEIGHT / 2);
+                }
+
+                if (isDraggingShelf) {
+                    ctx.globalAlpha = 1;
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                }
 
                 for (let i = 0; i < (shelf.layers || []).length; i++) {
                     const layer = shelf.layers[i];
@@ -647,7 +818,13 @@ const ShelfEditor = () => {
                     <canvas
                         ref={canvasRef}
                         className="w-full h-full cursor-crosshair"
-                        style={{ cursor: isPanning ? 'grabbing' : dragState ? 'grabbing' : 'crosshair' }}
+                        style={{
+                            cursor: isPanning ? 'grabbing'
+                                : shelfDrag ? 'grabbing'
+                                : dragState ? 'grabbing'
+                                : hoveredShelfId ? 'grab'
+                                : 'crosshair'
+                        }}
                         onMouseDown={handleCanvasMouseDown}
                         onMouseMove={handleCanvasMouseMove}
                         onMouseUp={handleCanvasMouseUp}
@@ -659,6 +836,7 @@ const ShelfEditor = () => {
                     <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-3 py-2 rounded-lg shadow text-xs text-gray-600 space-y-1">
                         <div>🖱️ 滚轮：缩放画布</div>
                         <div>🖱️ Alt+拖拽 / 中键：平移画布</div>
+                        <div>📌 拖动书架标题栏：移动书架位置</div>
                         <div>🖱️ Shift+拖拽：框选多本</div>
                         <div>📖 从右侧拖拽图书到格层</div>
                     </div>

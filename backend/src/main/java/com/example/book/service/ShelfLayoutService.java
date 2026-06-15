@@ -164,12 +164,21 @@ public class ShelfLayoutService {
 
     @Transactional
     public Map<String, Object> placeBook(Long bookId, Long layerId, Integer positionIndex) {
-        Map<String, Object> result = checkCapacity(layerId, 1);
+        BookPlacement existing = bookPlacementMapper.findByBookId(bookId);
+        boolean isSameLayer = existing != null && existing.getLayerId().equals(layerId);
+        
+        int addCount = 1;
+        if (isSameLayer) {
+            addCount = 0;
+        } else if (existing != null) {
+            addCount = 1;
+        }
+        
+        Map<String, Object> result = checkCapacity(layerId, addCount);
         if (!(Boolean) result.get("valid")) {
             return result;
         }
 
-        BookPlacement existing = bookPlacementMapper.findByBookId(bookId);
         if (existing != null) {
             bookPlacementMapper.deleteById(existing.getId());
         }
@@ -208,7 +217,22 @@ public class ShelfLayoutService {
 
     @Transactional
     public Map<String, Object> batchMoveBooks(List<Long> bookIds, Long targetLayerId, Integer startPosition) {
-        Map<String, Object> result = checkCapacity(targetLayerId, bookIds.size());
+        int booksAlreadyInTargetLayer = 0;
+        Set<Long> sourceLayerIds = new HashSet<>();
+        
+        for (Long bookId : bookIds) {
+            BookPlacement existing = bookPlacementMapper.findByBookId(bookId);
+            if (existing != null) {
+                if (existing.getLayerId().equals(targetLayerId)) {
+                    booksAlreadyInTargetLayer++;
+                } else {
+                    sourceLayerIds.add(existing.getLayerId());
+                }
+            }
+        }
+        
+        int netAddCount = bookIds.size() - booksAlreadyInTargetLayer;
+        Map<String, Object> result = checkCapacity(targetLayerId, netAddCount);
         if (!(Boolean) result.get("valid")) {
             return result;
         }
@@ -222,19 +246,6 @@ public class ShelfLayoutService {
 
         List<BookPlacement> targetPlacements = bookPlacementMapper.findByLayerId(targetLayerId);
         int insertPos = startPosition != null ? startPosition : targetPlacements.size();
-
-        Set<Long> sourceLayerIds = new HashSet<>();
-        Map<Long, List<BookPlacement>> sourcePlacementsMap = new HashMap<>();
-
-        for (Long bookId : bookIds) {
-            BookPlacement existing = bookPlacementMapper.findByBookId(bookId);
-            if (existing != null) {
-                sourceLayerIds.add(existing.getLayerId());
-                if (!sourcePlacementsMap.containsKey(existing.getLayerId())) {
-                    sourcePlacementsMap.put(existing.getLayerId(), bookPlacementMapper.findByLayerId(existing.getLayerId()));
-                }
-            }
-        }
 
         for (Long bookId : bookIds) {
             BookPlacement existing = bookPlacementMapper.findByBookId(bookId);
