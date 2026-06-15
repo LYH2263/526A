@@ -30,6 +30,8 @@ public class BookEditWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Map<String, WebSocketSession>> bookSessions = new ConcurrentHashMap<>();
     private final Map<String, String> sessionBookMap = new ConcurrentHashMap<>();
     private final Map<String, String> sessionUserMap = new ConcurrentHashMap<>();
+    private final Map<String, String> wsSessionToClientSessionMap = new ConcurrentHashMap<>();
+    private final Map<String, String> wsSessionToUsernameMap = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -68,21 +70,24 @@ public class BookEditWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        String sessionId = session.getId();
-        String bookKey = sessionBookMap.get(sessionId);
-        String userIdStr = sessionUserMap.get(sessionId);
+        String wsSessionId = session.getId();
+        String bookKey = sessionBookMap.get(wsSessionId);
+        String userIdStr = sessionUserMap.get(wsSessionId);
+        String clientSessionId = wsSessionToClientSessionMap.get(wsSessionId);
+        String username = wsSessionToUsernameMap.get(wsSessionId);
 
-        if (bookKey != null && userIdStr != null) {
+        if (bookKey != null && userIdStr != null && clientSessionId != null) {
             Long bookId = Long.parseLong(bookKey.split("_")[0]);
             Long userId = Long.parseLong(userIdStr);
 
-            collaborativeEditService.leaveEdit(bookId, userId, sessionId);
+            collaborativeEditService.leaveEdit(bookId, userId, clientSessionId);
+
             broadcastToBook(bookId, WebSocketMessage.of(
                     WebSocketMessage.TYPE_LEAVE,
                     bookId,
                     userId,
-                    getUsernameFromSession(session),
-                    collaborativeEditService.getOtherOnlineEditors(bookId, userId, sessionId)
+                    username != null ? username : "unknown",
+                    collaborativeEditService.getOtherOnlineEditorsDistinct(bookId, userId)
             ));
         }
 
@@ -98,28 +103,37 @@ public class BookEditWebSocketHandler extends TextWebSocketHandler {
         Long bookId = msg.getBookId();
         Long userId = msg.getUserId();
         String username = msg.getUsername();
+        String clientSessionId = msg.getSessionId();
 
         if (bookId == null || userId == null) {
             sendError(session, "bookId and userId are required");
             return;
         }
 
-        collaborativeEditService.joinEdit(bookId, userId, username, session.getId());
+        String sessionId = (clientSessionId != null && !clientSessionId.isEmpty())
+                ? clientSessionId
+                : session.getId();
+
+        collaborativeEditService.joinEdit(bookId, userId, username, sessionId);
 
         String bookKey = bookId + "_" + userId;
         sessionBookMap.put(session.getId(), bookKey);
         sessionUserMap.put(session.getId(), userId.toString());
+        wsSessionToClientSessionMap.put(session.getId(), sessionId);
+        wsSessionToUsernameMap.put(session.getId(), username);
 
         bookSessions.computeIfAbsent(bookKey, k -> new ConcurrentHashMap<>())
                 .put(session.getId(), session);
 
-        sendMessage(session, WebSocketMessage.of(
+        WebSocketMessage onlineEditorsMsg = WebSocketMessage.of(
                 WebSocketMessage.TYPE_ONLINE_EDITORS,
                 bookId,
                 userId,
                 username,
-                collaborativeEditService.getOtherOnlineEditors(bookId, userId, session.getId())
-        ));
+                collaborativeEditService.getOtherOnlineEditorsDistinct(bookId, userId)
+        );
+        onlineEditorsMsg.setSessionId(sessionId);
+        sendMessage(session, onlineEditorsMsg);
 
         sendMessage(session, WebSocketMessage.of(
                 WebSocketMessage.TYPE_FIELD_STATES,
@@ -134,22 +148,27 @@ public class BookEditWebSocketHandler extends TextWebSocketHandler {
                 bookId,
                 userId,
                 username,
-                collaborativeEditService.getOtherOnlineEditors(bookId, userId, session.getId())
+                collaborativeEditService.getOtherOnlineEditorsDistinct(bookId, userId)
         ));
     }
 
     private void handleLeave(WebSocketSession session, WebSocketMessage msg) {
         Long bookId = msg.getBookId();
         Long userId = msg.getUserId();
+        String clientSessionId = msg.getSessionId();
+
+        String sessionId = (clientSessionId != null && !clientSessionId.isEmpty())
+                ? clientSessionId
+                : session.getId();
 
         if (bookId != null && userId != null) {
-            collaborativeEditService.leaveEdit(bookId, userId, session.getId());
+            collaborativeEditService.leaveEdit(bookId, userId, sessionId);
             broadcastToBook(bookId, WebSocketMessage.of(
                     WebSocketMessage.TYPE_LEAVE,
                     bookId,
                     userId,
                     msg.getUsername(),
-                    collaborativeEditService.getOtherOnlineEditors(bookId, userId, session.getId())
+                    collaborativeEditService.getOtherOnlineEditorsDistinct(bookId, userId)
             ));
         }
 
@@ -159,9 +178,14 @@ public class BookEditWebSocketHandler extends TextWebSocketHandler {
     private void handleHeartbeat(WebSocketSession session, WebSocketMessage msg) {
         Long bookId = msg.getBookId();
         Long userId = msg.getUserId();
+        String clientSessionId = msg.getSessionId();
+
+        String sessionId = (clientSessionId != null && !clientSessionId.isEmpty())
+                ? clientSessionId
+                : session.getId();
 
         if (bookId != null && userId != null) {
-            boolean alive = collaborativeEditService.heartbeat(bookId, userId, session.getId());
+            boolean alive = collaborativeEditService.heartbeat(bookId, userId, sessionId);
             if (!alive) {
                 sendError(session, "Session expired, please rejoin");
             }
@@ -286,6 +310,8 @@ public class BookEditWebSocketHandler extends TextWebSocketHandler {
         }
 
         sessionUserMap.remove(sessionId);
+        wsSessionToClientSessionMap.remove(sessionId);
+        wsSessionToUsernameMap.remove(sessionId);
     }
 
     private String getUsernameFromSession(WebSocketSession session) {

@@ -41,7 +41,7 @@ public class BookEditController {
         Map<String, Object> result = new HashMap<>();
         result.put("sessionId", sessionId);
         result.put("editor", editor);
-        result.put("onlineEditors", collaborativeEditService.getOtherOnlineEditors(bookId, userId, sessionId));
+        result.put("onlineEditors", collaborativeEditService.getOtherOnlineEditorsDistinct(bookId, userId));
         result.put("fieldStates", collaborativeEditService.getFieldStates(bookId));
         result.put("book", bookService.findById(bookId));
 

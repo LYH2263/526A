@@ -84,6 +84,27 @@ public class CollaborativeEditService {
                 .collect(Collectors.toList());
     }
 
+    public List<OnlineEditor> getOnlineEditorsDistinct(Long bookId) {
+        Map<String, OnlineEditor> editors = bookEditors.get(bookId);
+        if (editors == null || editors.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<Long, OnlineEditor> distinctMap = new LinkedHashMap<>();
+        for (OnlineEditor editor : editors.values()) {
+            if (!distinctMap.containsKey(editor.getUserId())) {
+                distinctMap.put(editor.getUserId(), editor);
+            }
+        }
+        return new ArrayList<>(distinctMap.values());
+    }
+
+    public List<OnlineEditor> getOtherOnlineEditorsDistinct(Long bookId, Long currentUserId) {
+        List<OnlineEditor> all = getOnlineEditorsDistinct(bookId);
+        return all.stream()
+                .filter(e -> !e.getUserId().equals(currentUserId))
+                .collect(Collectors.toList());
+    }
+
     public FieldEditState startFieldEdit(Long bookId, String fieldName, Long userId, String username, String sessionId) {
         bookFieldStates.computeIfAbsent(bookId, k -> new ConcurrentHashMap<>());
         Map<String, FieldEditState> fieldStates = bookFieldStates.get(bookId);

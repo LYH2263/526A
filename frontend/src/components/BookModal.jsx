@@ -35,17 +35,6 @@ const findCategoryPath = (tree, targetId, path = []) => {
     return null;
 };
 
-const FIELD_LABELS = {
-    title: '书名',
-    author: '作者',
-    price: '价格',
-    publishDate: '出版日期',
-    description: '简介',
-    categoryId: '分类',
-    totalStock: '总库存',
-    warnThreshold: '预警阈值'
-};
-
 const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory, currentUser }) => {
     const [formData, setFormData] = useState({
         title: '',
@@ -71,24 +60,20 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory, c
     const [showConflict, setShowConflict] = useState(false);
     const [conflictData, setConflictData] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [editingSession, setEditingSession] = useState(null);
 
-    const wsListenersRef = useRef([]);
+    const listenersRef = useRef([]);
+    const hasJoinedRef = useRef(false);
 
     const flatCategories = useMemo(() => flattenTreeForCascader(categoryTree), [categoryTree]);
 
     const cascaderColumns = useMemo(() => {
-        const columns = [];
         const level0 = categoryTree.map(cat => ({
             id: cat.id,
             name: cat.name,
             hasChildren: cat.children && cat.children.length > 0
         }));
-        columns.push(level0);
 
         const getChildrenByParentId = (parentId) => {
-            const parent = flatCategories.find(c => c.id === parentId);
-            if (!parent || !parent.hasChildren) return [];
             return flatCategories
                 .filter(c => c.parentId === parentId)
                 .map(c => ({
@@ -113,48 +98,48 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory, c
     };
 
     const cleanupWsListeners = useCallback(() => {
-        wsListenersRef.current.forEach(unsubscribe => {
+        listenersRef.current.forEach(unsubscribe => {
             if (typeof unsubscribe === 'function') {
                 unsubscribe();
             }
         });
-        wsListenersRef.current = [];
+        listenersRef.current = [];
     }, []);
 
     const setupWsListeners = useCallback(() => {
         cleanupWsListeners();
 
-        wsListenersRef.current.push(
+        listenersRef.current.push(
             collaborativeEdit.on('connected', () => {
                 setWsConnected(true);
             })
         );
 
-        wsListenersRef.current.push(
+        listenersRef.current.push(
             collaborativeEdit.on('disconnected', () => {
                 setWsConnected(false);
             })
         );
 
-        wsListenersRef.current.push(
-            collaborativeEdit.on('editorJoined', ({ onlineEditors }) => {
-                setOnlineEditors([...onlineEditors]);
-            })
-        );
-
-        wsListenersRef.current.push(
-            collaborativeEdit.on('editorLeft', ({ onlineEditors }) => {
-                setOnlineEditors([...onlineEditors]);
-            })
-        );
-
-        wsListenersRef.current.push(
+        listenersRef.current.push(
             collaborativeEdit.on('onlineEditorsUpdate', (editors) => {
                 setOnlineEditors([...editors]);
             })
         );
 
-        wsListenersRef.current.push(
+        listenersRef.current.push(
+            collaborativeEdit.on('editorJoined', ({ onlineEditors }) => {
+                setOnlineEditors([...onlineEditors]);
+            })
+        );
+
+        listenersRef.current.push(
+            collaborativeEdit.on('editorLeft', ({ onlineEditors }) => {
+                setOnlineEditors([...onlineEditors]);
+            })
+        );
+
+        listenersRef.current.push(
             collaborativeEdit.on('fieldEditStart', (fieldState) => {
                 setFieldStates(prev => ({
                     ...prev,
@@ -163,7 +148,7 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory, c
             })
         );
 
-        wsListenersRef.current.push(
+        listenersRef.current.push(
             collaborativeEdit.on('fieldEditEnd', ({ fieldName }) => {
                 setFieldStates(prev => {
                     const newStates = { ...prev };
@@ -173,15 +158,15 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory, c
             })
         );
 
-        wsListenersRef.current.push(
+        listenersRef.current.push(
             collaborativeEdit.on('fieldStatesUpdate', (states) => {
                 setFieldStates({ ...states });
             })
         );
 
-        wsListenersRef.current.push(
+        listenersRef.current.push(
             collaborativeEdit.on('bookUpdated', (updatedBook) => {
-                if (updatedBook && updatedBook.version > formData.version) {
+                if (updatedBook && updatedBook.version != null) {
                     setFormData(prev => ({
                         ...prev,
                         version: updatedBook.version
@@ -189,29 +174,32 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory, c
                 }
             })
         );
-    }, [cleanupWsListeners, formData.version]);
+    }, [cleanupWsListeners]);
 
     const joinCollaborativeEdit = useCallback(async (bookId) => {
-        if (!bookId || !currentUser) return;
+        if (!bookId || !currentUser || hasJoinedRef.current) return;
 
         try {
-            const result = await collaborativeEdit.joinEdit(bookId, currentUser.id, currentUser.username);
-            setEditingSession(result);
-            setOnlineEditors(result.onlineEditors || []);
-            setFieldStates(collaborativeEdit.getFieldStates());
+            hasJoinedRef.current = true;
             setupWsListeners();
+            const result = await collaborativeEdit.joinEdit(bookId, currentUser.id, currentUser.username);
+            if (result) {
+                setOnlineEditors(result.onlineEditors || []);
+                setFieldStates(collaborativeEdit.getFieldStates());
+            }
         } catch (error) {
             console.error('Failed to join collaborative edit:', error);
+            hasJoinedRef.current = false;
         }
     }, [currentUser, setupWsListeners]);
 
     const leaveCollaborativeEdit = useCallback(async () => {
         cleanupWsListeners();
+        hasJoinedRef.current = false;
         await collaborativeEdit.leaveEdit();
         setOnlineEditors([]);
         setFieldStates({});
         setWsConnected(false);
-        setEditingSession(null);
     }, [cleanupWsListeners]);
 
     const handleFieldFocus = useCallback((fieldName) => {
@@ -234,62 +222,75 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory, c
     }, [fieldStates]);
 
     useEffect(() => {
-        if (isOpen) {
-            fetchCategoryTree();
-        }
+        if (!isOpen) return;
+        fetchCategoryTree();
     }, [isOpen]);
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen || !bookToEdit?.id || !currentUser) return;
 
-        if (bookToEdit) {
-            setFormData({
-                ...bookToEdit,
-                tagIds: bookToEdit.tags ? bookToEdit.tags.map(t => t.id) : [],
-                version: bookToEdit.version || 0
-            });
-            if (bookToEdit.categoryId) {
-                const path = findCategoryPath(categoryTree, bookToEdit.categoryId);
-                setSelectedPath(path || [bookToEdit.categoryId]);
-            } else {
-                setSelectedPath([]);
-            }
+        let categoryInitialized = false;
 
-            if (bookToEdit.id) {
-                joinCollaborativeEdit(bookToEdit.id);
-            }
-        } else {
-            let defaultCategoryId = null;
-            if (selectedCategory?.type === 'category') {
-                defaultCategoryId = selectedCategory.id;
-            }
-            setFormData({
-                title: '',
-                author: '',
-                price: '',
-                publishDate: '',
-                description: '',
-                categoryId: defaultCategoryId,
-                totalStock: 1,
-                availableStock: 1,
-                warnThreshold: 0,
-                tagIds: [],
-                version: 0
-            });
-            if (defaultCategoryId) {
-                const path = findCategoryPath(categoryTree, defaultCategoryId);
-                setSelectedPath(path || [defaultCategoryId]);
-            } else {
-                setSelectedPath([]);
+        setFormData({
+            ...bookToEdit,
+            tagIds: bookToEdit.tags ? bookToEdit.tags.map(t => t.id) : [],
+            version: bookToEdit.version || 0
+        });
+
+        if (bookToEdit.categoryId) {
+            const path = findCategoryPath(categoryTree, bookToEdit.categoryId);
+            if (path) {
+                setSelectedPath(path);
+                categoryInitialized = true;
             }
         }
 
+        if (!categoryInitialized) {
+            setSelectedPath([]);
+        }
+
+        joinCollaborativeEdit(bookToEdit.id);
+
         return () => {
-            if (bookToEdit?.id) {
-                leaveCollaborativeEdit();
-            }
+            leaveCollaborativeEdit();
         };
-    }, [bookToEdit, isOpen, selectedCategory, categoryTree, joinCollaborativeEdit, leaveCollaborativeEdit]);
+    }, [bookToEdit?.id, isOpen, currentUser, categoryTree, joinCollaborativeEdit, leaveCollaborativeEdit]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        if (bookToEdit?.id) return;
+
+        let defaultCategoryId = null;
+        if (selectedCategory?.type === 'category') {
+            defaultCategoryId = selectedCategory.id;
+        }
+
+        setFormData({
+            title: '',
+            author: '',
+            price: '',
+            publishDate: '',
+            description: '',
+            categoryId: defaultCategoryId,
+            totalStock: 1,
+            availableStock: 1,
+            warnThreshold: 0,
+            tagIds: [],
+            version: 0
+        });
+
+        if (defaultCategoryId) {
+            const path = findCategoryPath(categoryTree, defaultCategoryId);
+            setSelectedPath(path || [defaultCategoryId]);
+        } else {
+            setSelectedPath([]);
+        }
+
+        setOnlineEditors([]);
+        setFieldStates({});
+        setWsConnected(false);
+        hasJoinedRef.current = false;
+    }, [bookToEdit?.id, isOpen, selectedCategory, categoryTree]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -304,15 +305,6 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory, c
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [cascaderOpen]);
-
-    useEffect(() => {
-        return () => {
-            cleanupWsListeners();
-            if (bookToEdit?.id) {
-                collaborativeEdit.leaveEdit();
-            }
-        };
-    }, [cleanupWsListeners, bookToEdit?.id]);
 
     const handleSelectCategory = (category, level) => {
         const newPath = [...selectedPath.slice(0, level), category.id];
@@ -505,7 +497,7 @@ const BookModal = ({ isOpen, onClose, onSuccess, bookToEdit, selectedCategory, c
                 <div className="flex flex-wrap gap-2">
                     {onlineEditors.map((editor, index) => (
                         <div
-                            key={`${editor.userId}-${editor.sessionId || index}`}
+                            key={`${editor.userId}-${index}`}
                             className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-blue-200 rounded-full text-xs"
                         >
                             <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px] font-medium">
