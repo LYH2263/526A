@@ -27,6 +27,17 @@ CREATE TABLE IF NOT EXISTS book (
     FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 迁移：为已存在的 book 表补充 category_id 列（CREATE TABLE IF NOT EXISTS 跳过已存在表时不加新列）
+SET @dbname = DATABASE();
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = 'book' AND COLUMN_NAME = 'category_id');
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE book ADD COLUMN category_id BIGINT DEFAULT NULL COMMENT ''分类ID'' AFTER description, ADD INDEX idx_category_id (category_id), ADD CONSTRAINT fk_book_category FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE SET NULL',
+    'SELECT ''category_id already exists in book table'' AS info');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 CREATE TABLE IF NOT EXISTS book_review (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     book_id BIGINT NOT NULL COMMENT '图书ID',

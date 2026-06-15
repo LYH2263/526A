@@ -51,7 +51,11 @@
     </select>
 
     <select id="countBooksInCategory" resultType="int">
-        SELECT COUNT(*) FROM book WHERE category_id = #{categoryId}
+        SELECT COUNT(*) FROM book
+        <choose>
+            <when test="categoryId != null">WHERE category_id = #{categoryId}</when>
+            <otherwise>WHERE category_id IS NULL</otherwise>
+        </choose>
     </select>
 
     <select id="findAllDescendantIds" resultType="java.lang.Long">
