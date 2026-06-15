@@ -160,3 +160,28 @@ CREATE TABLE IF NOT EXISTS shelf_layout_version (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS export_task (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    task_name VARCHAR(255) NOT NULL COMMENT '任务名称',
+    export_type VARCHAR(50) NOT NULL COMMENT '导出类型：BOOK-图书',
+    file_format VARCHAR(20) NOT NULL COMMENT '文件格式：EXCEL/CSV/PDF',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING-排队，PROCESSING-进行中，SUCCESS-成功，FAILED-失败',
+    total_rows BIGINT DEFAULT 0 COMMENT '总行数',
+    processed_rows BIGINT DEFAULT 0 COMMENT '已处理行数',
+    progress INT DEFAULT 0 COMMENT '进度百分比',
+    file_path VARCHAR(500) DEFAULT NULL COMMENT '文件存储路径',
+    file_name VARCHAR(255) DEFAULT NULL COMMENT '文件名',
+    file_size BIGINT DEFAULT 0 COMMENT '文件大小（字节）',
+    filter_params TEXT COMMENT '筛选参数JSON',
+    user_id BIGINT DEFAULT NULL COMMENT '用户ID',
+    username VARCHAR(50) DEFAULT NULL COMMENT '用户名（冗余）',
+    error_message TEXT COMMENT '错误信息',
+    retry_count INT NOT NULL DEFAULT 0 COMMENT '重试次数',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    completed_at TIMESTAMP NULL DEFAULT NULL COMMENT '完成时间',
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status),
+    INDEX idx_completed_at (completed_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -27,4 +27,17 @@ public interface BookMapper {
     List<Book> findByIds(@Param("ids") List<Long> ids);
 
     int updateWithVersion(Book book);
+
+    long countAll();
+
+    long countByCategoryIds(@Param("categoryIds") List<Long> categoryIds);
+
+    long countUncategorized();
+
+    List<Book> findAllWithPagination(@Param("offset") long offset, @Param("limit") int limit);
+
+    List<Book> findByCategoryIdsWithPagination(@Param("categoryIds") List<Long> categoryIds,
+                                                @Param("offset") long offset, @Param("limit") int limit);
+
+    List<Book> findUncategorizedWithPagination(@Param("offset") long offset, @Param("limit") int limit);
 }

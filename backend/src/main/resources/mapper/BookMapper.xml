@@ -146,4 +146,57 @@
         ORDER BY b.id DESC
     </select>
 
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM book
+    </select>
+
+    <select id="countByCategoryIds" resultType="long">
+        SELECT COUNT(*) FROM book WHERE category_id IN
+        <foreach item="id" collection="categoryIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="countUncategorized" resultType="long">
+        SELECT COUNT(*) FROM book WHERE category_id IS NULL
+    </select>
+
+    <select id="findAllWithPagination" resultMap="BookResultMap">
+        SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
+               b.category_id, c.name AS category_name,
+               b.total_stock, b.available_stock, b.warn_threshold, b.version,
+               b.avg_rating, b.review_count
+        FROM book b
+        LEFT JOIN category c ON b.category_id = c.id
+        ORDER BY b.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="findByCategoryIdsWithPagination" resultMap="BookResultMap">
+        SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
+               b.category_id, c.name AS category_name,
+               b.total_stock, b.available_stock, b.warn_threshold, b.version,
+               b.avg_rating, b.review_count
+        FROM book b
+        LEFT JOIN category c ON b.category_id = c.id
+        WHERE b.category_id IN
+        <foreach item="id" collection="categoryIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY b.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="findUncategorizedWithPagination" resultMap="BookResultMap">
+        SELECT b.id, b.title, b.author, b.price, b.publish_date, b.description,
+               b.category_id, c.name AS category_name,
+               b.total_stock, b.available_stock, b.warn_threshold, b.version,
+               b.avg_rating, b.review_count
+        FROM book b
+        LEFT JOIN category c ON b.category_id = c.id
+        WHERE b.category_id IS NULL
+        ORDER BY b.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
 </mapper>

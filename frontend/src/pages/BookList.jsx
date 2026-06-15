@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import request from '../api/request';
+import exportApi from '../api/export';
 import BookModal from '../components/BookModal';
 import DeleteModal from '../components/DeleteModal';
 import CategoryTree from '../components/CategoryTree';
@@ -19,6 +20,12 @@ const BookList = ({ user, initialBookId, onNotificationBookCleared }) => {
     const [detailBook, setDetailBook] = useState(null);
     const [selectedTagIds, setSelectedTagIds] = useState([]);
     const [tagSemantic, setTagSemantic] = useState('OR');
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportFormat, setExportFormat] = useState('EXCEL');
+    const [exportTaskName, setExportTaskName] = useState('');
+    const [isExporting, setIsExporting] = useState(false);
+    const [currentExportTask, setCurrentExportTask] = useState(null);
+    const exportPollingRef = useRef(null);
 
     const fetchBooks = useCallback(async () => {
         try {
@@ -195,6 +202,85 @@ const BookList = ({ user, initialBookId, onNotificationBookCleared }) => {
         }
     };
 
+    const handleOpenExport = () => {
+        setExportTaskName(`图书导出_${new Date().toLocaleDateString('zh-CN')}`);
+        setExportFormat('EXCEL');
+        setIsExportModalOpen(true);
+    };
+
+    const handleExport = async () => {
+        if (!user?.id) {
+            alert('请先登录');
+            return;
+        }
+
+        setIsExporting(true);
+        try {
+            const request = {
+                format: exportFormat,
+                taskName: exportTaskName || '图书数据导出',
+                categoryId: selectedCategory.type === 'category' ? selectedCategory.id : null,
+                filterByCategory: selectedCategory.type === 'category',
+                tagIds: selectedTagIds,
+                tagSemantic: tagSemantic
+            };
+
+            const task = await exportApi.createBookExport(request, user.id, user.username);
+            setCurrentExportTask(task);
+            startExportPolling(task.id);
+        } catch (e) {
+            alert(e.message || '导出失败');
+            setIsExporting(false);
+        }
+    };
+
+    const startExportPolling = (taskId) => {
+        if (exportPollingRef.current) {
+            clearInterval(exportPollingRef.current);
+        }
+
+        exportPollingRef.current = setInterval(async () => {
+            try {
+                const progress = await exportApi.getProgress(taskId);
+                setCurrentExportTask(prev => prev ? { ...prev, ...progress } : null);
+
+                if (progress.status === 'SUCCESS' || progress.status === 'FAILED') {
+                    clearInterval(exportPollingRef.current);
+                    exportPollingRef.current = null;
+                    setIsExporting(false);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }, 2000);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (exportPollingRef.current) {
+                clearInterval(exportPollingRef.current);
+            }
+        };
+    }, []);
+
+    const handleGoToDownload = () => {
+        setIsExportModalOpen(false);
+        setCurrentExportTask(null);
+        if (window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent('navigate-to-download'));
+        }
+    };
+
+    const getStatusText = (status) => {
+        const map = {
+            PENDING: '排队中',
+            PROCESSING: '导出中',
+            SUCCESS: '完成',
+            FAILED: '失败'
+        };
+        return map[status] || status;
+    };
+
     return (
         <div className="flex gap-6 h-full">
             <div className="w-72 flex-shrink-0 h-[calc(100vh-8rem)]">
@@ -264,17 +350,28 @@ const BookList = ({ user, initialBookId, onNotificationBookCleared }) => {
                             <h2 className="text-2xl font-extrabold text-gray-800 tracking-tight">{pageInfo.title}</h2>
                             <p className="text-gray-500 text-sm mt-1">{pageInfo.subtitle}</p>
                         </div>
-                        <button
-                            onClick={handleAdd}
-                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl shadow-blue-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5"
-                        >
-                            <div className="bg-white/20 rounded-full p-1">
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleOpenExport}
+                                className="px-5 py-3 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl shadow-sm border border-gray-200 transition-all duration-200 flex items-center gap-2"
+                            >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                            </div>
-                            添加新书
-                        </button>
+                                导出
+                            </button>
+                            <button
+                                onClick={handleAdd}
+                                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl shadow-blue-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5"
+                            >
+                                <div className="bg-white/20 rounded-full p-1">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                </div>
+                                添加新书
+                            </button>
+                        </div>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -507,6 +604,176 @@ const BookList = ({ user, initialBookId, onNotificationBookCleared }) => {
                         user={user}
                         onReviewUpdated={handleReviewUpdated}
                     />
+
+                    {isExportModalOpen && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+                                <div className="p-6 border-b border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-xl font-bold text-gray-800">导出图书数据</h3>
+                                        <button
+                                            onClick={() => setIsExportModalOpen(false)}
+                                            className="text-gray-400 hover:text-gray-600 p-1"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 space-y-4">
+                                    {!currentExportTask ? (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    任务名称
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={exportTaskName}
+                                                    onChange={(e) => setExportTaskName(e.target.value)}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                                    placeholder="请输入任务名称"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    导出格式
+                                                </label>
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    {['EXCEL', 'CSV', 'PDF'].map((format) => (
+                                                        <button
+                                                            key={format}
+                                                            onClick={() => setExportFormat(format)}
+                                                            className={`px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                                                                exportFormat === format
+                                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                                            }`}
+                                                        >
+                                                            {format}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-blue-50 rounded-lg p-4">
+                                                <p className="text-sm text-blue-700">
+                                                    <span className="font-medium">提示：</span>
+                                                    将导出当前筛选条件下的所有图书数据，共 {books.length} 条。
+                                                    大数据量建议使用 Excel 格式。
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="py-4">
+                                            <div className="text-center mb-4">
+                                                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-blue-100 flex items-center justify-center">
+                                                    {currentExportTask.status === 'SUCCESS' ? (
+                                                        <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    ) : currentExportTask.status === 'FAILED' ? (
+                                                        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    ) : (
+                                                        <svg className="w-8 h-8 text-blue-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                <p className="font-medium text-gray-800">
+                                                    {getStatusText(currentExportTask.status)}
+                                                </p>
+                                            </div>
+
+                                            {(currentExportTask.status === 'PENDING' || currentExportTask.status === 'PROCESSING') && (
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between text-sm text-gray-500">
+                                                        <span>进度</span>
+                                                        <span>{currentExportTask.progress || 0}%</span>
+                                                    </div>
+                                                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                                                            style={{ width: `${currentExportTask.progress || 0}%` }}
+                                                        />
+                                                    </div>
+                                                    <p className="text-xs text-gray-400 text-center">
+                                                        已处理 {currentExportTask.processedRows || 0} / {currentExportTask.totalRows || 0} 条
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {currentExportTask.status === 'FAILED' && (
+                                                <div className="bg-red-50 rounded-lg p-3 text-sm text-red-700">
+                                                    错误：{currentExportTask.errorMessage || '未知错误'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+                                    {!currentExportTask ? (
+                                        <>
+                                            <button
+                                                onClick={() => setIsExportModalOpen(false)}
+                                                className="px-5 py-2.5 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition-colors"
+                                            >
+                                                取消
+                                            </button>
+                                            <button
+                                                onClick={handleExport}
+                                                disabled={!exportTaskName}
+                                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                </svg>
+                                                开始导出
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {currentExportTask.status === 'SUCCESS' && (
+                                                <button
+                                                    onClick={handleGoToDownload}
+                                                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
+                                                >
+                                                    前往下载
+                                                </button>
+                                            )}
+                                            {currentExportTask.status === 'FAILED' && (
+                                                <button
+                                                    onClick={() => {
+                                                        setCurrentExportTask(null);
+                                                    }}
+                                                    className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+                                                >
+                                                    重新设置
+                                                </button>
+                                            )}
+                                            {(currentExportTask.status === 'PENDING' || currentExportTask.status === 'PROCESSING') && (
+                                                <button
+                                                    onClick={() => {
+                                                        setIsExportModalOpen(false);
+                                                        setCurrentExportTask(null);
+                                                    }}
+                                                    className="px-5 py-2.5 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition-colors"
+                                                >
+                                                    后台运行
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
