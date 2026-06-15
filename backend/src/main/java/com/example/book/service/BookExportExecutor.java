@@ -32,6 +32,9 @@ import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -209,12 +212,67 @@ public class BookExportExecutor {
         }
     }
 
+    private BaseFont createChineseBaseFont() throws DocumentException, IOException {
+        try {
+            return BaseFont.createFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED);
+        } catch (Exception e) {
+            // ignore, try next
+        }
+
+        String[][] systemFontPaths = {
+                {"C:/Windows/Fonts/simsun.ttc", "0"},
+                {"C:/Windows/Fonts/simhei.ttf", null},
+                {"C:/Windows/Fonts/msyh.ttc", "0"},
+                {"C:/Windows/Fonts/msyhbd.ttc", "0"},
+                {"/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc", "0"},
+                {"/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", "0"},
+                {"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", "0"},
+                {"/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc", "0"},
+                {"/System/Library/Fonts/PingFang.ttc", "0"},
+                {"/System/Library/Fonts/STHeiti Light.ttc", "0"},
+                {"/System/Library/Fonts/Hiragino Sans GB.ttc", "0"}
+        };
+
+        for (String[] fontInfo : systemFontPaths) {
+            String fontPath = fontInfo[0];
+            String ttcIndex = fontInfo[1];
+            try {
+                Path path = Paths.get(fontPath);
+                if (Files.exists(path)) {
+                    if (ttcIndex != null) {
+                        return BaseFont.createFont(fontPath + "," + ttcIndex, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+                    } else {
+                        return BaseFont.createFont(fontPath, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+                    }
+                }
+            } catch (Exception e) {
+                // ignore, try next
+            }
+        }
+
+        try {
+            InputStream fontStream = getClass().getClassLoader().getResourceAsStream("fonts/SimSun.ttf");
+            if (fontStream != null) {
+                Path tempFont = Files.createTempFile("chinese-font-", ".ttf");
+                Files.copy(fontStream, tempFont, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                fontStream.close();
+                BaseFont bf = BaseFont.createFont(tempFont.toString(), BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+                tempFont.toFile().deleteOnExit();
+                return bf;
+            }
+        } catch (Exception e) {
+            // ignore, try next
+        }
+
+        return BaseFont.createFont();
+    }
+
     private void exportPdf(ExportTask task, BookExportRequest request, String filePath, long totalRows) throws Exception {
         Document document = new Document(PageSize.A4.rotate(), 20, 20, 30, 30);
         PdfWriter.getInstance(document, new FileOutputStream(filePath));
         document.open();
 
-        BaseFont baseFont = BaseFont.createFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED);
+        BaseFont baseFont = createChineseBaseFont();
         com.itextpdf.text.Font titleFont = new com.itextpdf.text.Font(baseFont, 16, com.itextpdf.text.Font.BOLD);
         com.itextpdf.text.Font headerFont = new com.itextpdf.text.Font(baseFont, 10, com.itextpdf.text.Font.BOLD);
         com.itextpdf.text.Font contentFont = new com.itextpdf.text.Font(baseFont, 9);
